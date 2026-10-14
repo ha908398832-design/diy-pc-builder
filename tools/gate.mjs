@@ -29,6 +29,7 @@ const steps = [
   { name: '生成数据包', cmd: ['tools/gen-data-bundle.mjs'], quiet: true },
   { name: '校验硬件数据', cmd: ['tools/validate-data.mjs'], quiet: false, expectLast: /校验通过：0 错误/ },
   { name: '构建单文件产物', cmd: ['tools/build.mjs'], quiet: true },
+  { name: '构建可复现性', cmd: ['tools/check-reproducible.mjs'], quiet: false, expectLast: /构建可复现/ },
   { name: '无价格门禁 (A15)', cmd: ['tools/check-no-price.mjs'], quiet: false, expectLast: /门禁通过/ },
 ];
 
