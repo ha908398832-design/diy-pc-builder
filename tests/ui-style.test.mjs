@@ -15,7 +15,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-  renderOverview, renderTopBar, renderTable, renderLeftPanel,
+  renderOverview, renderTopBar, renderTable, renderLeftPanel, renderDetail,
 } from '../src/ui/render.js';
 import { computePower } from '../src/core/power.js';
 import { compatibleBuild, makeCpu, makeGpu } from './fixtures/hardware.mjs';
@@ -400,7 +400,76 @@ test('滚动：仅中栏改动，其它区域仍直接赋值', () => {
   assert.ok(src.includes('centerEl.innerHTML = '), '中栏改用 centerEl 变量以便前后插入滚动逻辑');
 });
 
-test('回归：新增的概览与主题按钮不含价格内容（A15）', () => {
+// ══════════════════════════════════════════════════════════════════
+// 8. 详情区按需展开 + 可主动收起
+// ══════════════════════════════════════════════════════════════════
+
+test('详情：不选中时不渲染详情区（不常驻占空间）', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(
+    /const showDetail = compareRecs\.length >= 2 \|\| !!detailRec;/.test(src),
+    '应先判定是否需要展示详情区',
+  );
+  assert.ok(
+    /\$\{showDetail \? `/.test(src),
+    '详情区应由 showDetail 条件渲染，未选中时整段不输出',
+  );
+});
+
+test('详情：提供主动收起按钮', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(
+    /data-action="close-detail"/.test(src),
+    '详情区应有 data-action="close-detail" 收起按钮',
+  );
+  assert.ok(/case 'close-detail':/.test(src), '应处理 close-detail 动作');
+  // 收起时应同时清空详情选中与对比勾选
+  const idx = src.indexOf("case 'close-detail':");
+  const fn = src.slice(idx, idx + 400);
+  assert.ok(/selectedDetail = null/.test(fn), '收起应清空 selectedDetail');
+  assert.ok(/compare = \[\]/.test(fn), '收起应清空 compare');
+});
+
+test('详情：Esc 可收起（且优先关闭弹窗）', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  const idx = src.indexOf("if (e.key === 'Escape')");
+  assert.ok(idx > 0, '应处理 Escape');
+  const fn = src.slice(idx, idx + 700);
+  assert.ok(/closeModal\(\)/.test(fn), '有弹窗时 Esc 应关闭弹窗');
+  assert.ok(/modal\.hidden/.test(fn), '应先判断弹窗是否打开');
+  assert.ok(/selectedDetail = null/.test(fn), '无弹窗时 Esc 应收起详情');
+});
+
+test('详情：收起后提示用户如何展开', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(
+    /!showDetail[\s\S]{0,200}点击任一行可展开参数详情/.test(src),
+    '未展开时应提示"点击任一行可展开参数详情"',
+  );
+});
+
+test('详情：收起按钮有明确样式（sticky 右上角）', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  const m = css.match(/\.detail-close\s*\{([\s\S]*?)\}/);
+  assert.ok(m, '应存在 .detail-close 规则');
+  assert.ok(/position:\s*sticky/.test(m[1]) || /position:\s*absolute/.test(m[1]),
+    '收起按钮应固定在详情区顶部，不随内容滚动');
+  assert.ok(/z-index/.test(m[1]), '应设置 z-index 避免被内容遮挡');
+});
+
+test('详情：详情区仍与列表区有视觉分隔（回归保护）', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  const m = css.match(/\.detail-zone\s*\{([\s\S]*?)\}/);
+  assert.ok(m, '应存在 .detail-zone 规则');
+  assert.ok(/background:\s*var\(--bg\)/.test(m[1]), '详情区仍应使用 --bg 区分于列表区');
+  assert.ok(/border-top:\s*1px solid var\(--border-strong\)/.test(m[1]), '仍应有分隔线');
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 9. 无价格（回归：A15 门禁在改动后仍成立）
+// ══════════════════════════════════════════════════════════════════
+
+test('回归：概览、顶栏与详情区不含价格内容（A15）', () => {
   const b = compatibleBuild();
   const power = computePower(b.resolved);
   const overview = renderOverview({
@@ -408,8 +477,9 @@ test('回归：新增的概览与主题按钮不含价格内容（A15）', () =>
     counts: { error: 0, warn: 0, info: 0 }, power, onSuggestPsu: true,
   });
   const topbar = renderTopBar({ schemes: [], theme: 'dark' });
+  const detail = renderDetail({ category: 'cpu', record: b.cpu });
 
-  for (const [name, html] of [['概览', overview], ['顶栏', topbar]]) {
+  for (const [name, html] of [['概览', overview], ['顶栏', topbar], ['详情区', detail]]) {
     assert.ok(!html.includes('¥'), `${name}不应含 ¥`);
     assert.ok(!/总价|价格|超支/.test(html), `${name}不应含价格文案`);
   }

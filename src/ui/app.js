@@ -229,6 +229,10 @@ function render() {
   const prevListScroll = readScroll(centerEl, '.list-wrap');
   const prevDetailScroll = readScroll(centerEl, '.detail-zone');
 
+  // 详情区按需展开：只有选中了型号或勾选了对比才显示，否则不占空间
+  const showDetail = compareRecs.length >= 2 || !!detailRec;
+  centerEl.classList.toggle('detail-open', showDetail);
+
   centerEl.innerHTML = `
     ${renderToolbar({
       category: s.ui.category,
@@ -241,6 +245,9 @@ function render() {
     <div class="list-meta">
       <span>共 ${v.total} 个型号</span>
       <span>匹配 <b>${v.matched}</b></span>
+      ${!showDetail
+        ? '<span class="meta-tip">点击任一行可展开参数详情 · 勾选 2~4 个可并排对比</span>'
+        : ''}
       ${s.ui.query ? `<span class="muted">搜索「${escapeHtml(s.ui.query)}」</span>` : ''}
       ${!s.ui.includeUsed && usedCount > 0
         ? `<span class="muted">已隐藏 ${usedCount} 个二手/矿卡/洋垃圾（勾选上方「含二手」查看）</span>`
@@ -253,7 +260,10 @@ function render() {
             ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
             : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare }))}
     </div>
+    ${showDetail ? `
     <div class="detail-zone" id="detail-zone">
+      <button type="button" class="detail-close" data-action="close-detail"
+              title="收起参数详情（Esc）" aria-label="收起参数详情">✕ 收起</button>
       ${compareRecs.length >= 2
         ? renderCompare({ category: s.ui.category, records: compareRecs, checkCandidate: (r) => checkCandidate(s.ui.category, r, s.config, d.byId) })
         : renderDetail({
@@ -261,7 +271,7 @@ function render() {
             record: detailRec,
             candidateCheck: detailRec ? checkCandidate(s.ui.category, detailRec, s.config, d.byId) : null,
           })}
-    </div>`;
+    </div>` : ''}`;
 
   // 恢复滚动位置（见上方说明）
   restoreScroll($('.list-wrap', centerEl), prevListScroll);
@@ -381,6 +391,13 @@ function bindEvents() {
         break;
       case 'compare-clear':
         store.clearCompare();
+        break;
+      case 'close-detail':
+        // 收起参数详情：清空详情选中与对比勾选
+        store.update((st) => {
+          st.ui.selectedDetail = null;
+          st.ui.compare = [];
+        }, 'close-detail');
         break;
       case 'toggle-right':
         store.toggleRightCollapsed();
@@ -533,7 +550,16 @@ function bindEvents() {
       return;
     }
     if (e.key === 'Escape') {
-      closeModal();
+      // 弹窗优先关闭；没有弹窗时收起参数详情
+      const modal = $('#modal');
+      if (modal && !modal.hidden) {
+        closeModal();
+      } else if (store.state.ui.selectedDetail || (store.state.ui.compare || []).length) {
+        store.update((st) => {
+          st.ui.selectedDetail = null;
+          st.ui.compare = [];
+        }, 'close-detail');
+      }
       return;
     }
     const inInput = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
