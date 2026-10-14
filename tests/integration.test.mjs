@@ -64,7 +64,7 @@ function pick(cat, pred, desc) {
 // 数据存在性
 // ══════════════════════════════════════════════════════════════════
 
-test('真实数据：8 品类齐全且总数 300~500（PRD A2）', { skip: !hasData && 'data/ 尚未生成' }, () => {
+test('真实数据：8 品类齐全且总数 300~800（PRD A2 v1.3）', { skip: !hasData && 'data/ 尚未生成' }, () => {
   let total = 0;
   for (const cat of CATEGORY_LIST) {
     const list = DB[cat];
@@ -76,7 +76,7 @@ test('真实数据：8 品类齐全且总数 300~500（PRD A2）', { skip: !hasD
     );
     total += list.length;
   }
-  assert.ok(total >= 300 && total <= 500, `总数应在 300~500，实际 ${total}`);
+  assert.ok(total >= 300 && total <= 800, `总数应在 300~800，实际 ${total}`);
 });
 
 test('真实数据：全库 id 唯一（T1.9）', { skip: !hasData && 'data/ 尚未生成' }, () => {

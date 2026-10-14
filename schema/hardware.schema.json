@@ -20,7 +20,7 @@
       "label": "主板",
       "file": "motherboard.json",
       "csvFile": "motherboard.csv",
-      "minCount": 80,
+      "minCount": 130,
       "fieldCount": 28,
       "requiredCount": 16
     },
@@ -29,7 +29,7 @@
       "label": "显卡",
       "file": "gpu.json",
       "csvFile": "gpu.csv",
-      "minCount": 70,
+      "minCount": 130,
       "fieldCount": 26,
       "requiredCount": 16
     },

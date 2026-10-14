@@ -3878,7 +3878,7 @@ const CATEGORY_FIELDS = {
     label: '主板',
     file: 'motherboard.json',
     csvFile: 'motherboard.csv',
-    minCount: 80,
+    minCount: 130,
     fields: [
       { key: 'socket', type: 'string', required: true, enum: 'socket', label: '插槽', rules: ['E1'], critical: true },
       { key: 'chipset', type: 'string', required: true, label: '芯片组', rules: ['W5'], critical: true },
@@ -3906,7 +3906,7 @@ const CATEGORY_FIELDS = {
     label: '显卡',
     file: 'gpu.json',
     csvFile: 'gpu.csv',
-    minCount: 70,
+    minCount: 130,
     fields: [
       { key: 'chipset', type: 'string', required: true, label: '显示芯片', critical: true },
       { key: 'vram', type: 'number', required: true, unit: 'GB', label: '显存容量', range: { min: 1, max: 48 }, critical: true },

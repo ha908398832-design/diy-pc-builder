@@ -45,7 +45,7 @@ const usedOf = (cat) => DB[cat].filter((r) => r.condition && r.condition !== 'ne
 // 1. 数量与总量
 // ══════════════════════════════════════════════════════════════════
 
-test('数据量：各品类达到 minCount，总量仍在 PRD 规定的 300~500 内', { skip: !hasData && '无数据' }, () => {
+test('数据量：各品类达到 minCount，总量仍在 PRD 规定的 300~800 内', { skip: !hasData && '无数据' }, () => {
   let total = 0;
   for (const cat of CATEGORY_LIST) {
     const need = CATEGORY_FIELDS[cat].minCount;
@@ -54,7 +54,7 @@ test('数据量：各品类达到 minCount，总量仍在 PRD 规定的 300~500 
     total += n;
   }
   assert.ok(total >= 300, `总数应 ≥300，实际 ${total}`);
-  assert.ok(total <= 500, `总数不得超过 PRD 上限 500，实际 ${total}`);
+  assert.ok(total <= 800, `总数不得超过 PRD 上限 800，实际 ${total}`);
 });
 
 test('数据量：总量相比扩充前(300)有实质增长', { skip: !hasData && '无数据' }, () => {

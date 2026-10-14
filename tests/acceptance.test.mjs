@@ -57,7 +57,7 @@ test('A1：产物为单文件、无外部引用、断网可用', { skip: !hasDis
   assert.ok(code.includes('__defs["src/data/bundle.js"]'), '数据应内联');
 });
 
-test('A2：8 品类齐全，每品类 ≥30，总计 300~500', { skip: !hasData && '无数据' }, () => {
+test('A2：8 品类齐全，各品类达最低配比，总计 300~800', { skip: !hasData && '无数据' }, () => {
   let total = 0;
   for (const cat of CATEGORY_LIST) {
     const n = DB[cat].length;
@@ -65,7 +65,7 @@ test('A2：8 品类齐全，每品类 ≥30，总计 300~500', { skip: !hasData 
     assert.ok(n >= CATEGORY_FIELDS[cat].minCount, `${cat} 应达最低配比 ${CATEGORY_FIELDS[cat].minCount}`);
     total += n;
   }
-  assert.ok(total >= 300 && total <= 500, `总数应 300~500，实际 ${total}`);
+  assert.ok(total >= 300 && total <= 800, `总数应 300~800，实际 ${total}`);
 });
 
 test('A3：关键参数无缺漏，通过数据校验', { skip: !hasData && '无数据' }, async () => {

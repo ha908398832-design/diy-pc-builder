@@ -39,8 +39,8 @@ node tools/validate-data.mjs
 | 品类 | 模板文件 | 字段数 | 必填 | 建议型号数 |
 |---|---|---|---|---|
 | CPU | `cpu.csv` | 29 | 18 | ≥80 |
-| 主板 | `motherboard.csv` | 28 | 16 | ≥80 |
-| 显卡 | `gpu.csv` | 26 | 16 | ≥70 |
+| 主板 | `motherboard.csv` | 28 | 16 | ≥130 |
+| 显卡 | `gpu.csv` | 26 | 16 | ≥130 |
 | 内存 | `memory.csv` | 20 | 11 | ≥55 |
 | 电源 | `psu.csv` | 21 | 13 | ≥50 |
 | 机箱 | `case.csv` | 23 | 15 | ≥50 |
