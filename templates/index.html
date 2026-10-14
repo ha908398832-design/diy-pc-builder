@@ -8,6 +8,12 @@
 </head>
 <body>
 
+<!--
+  注意结构：#modal 与 #toast 必须放在 #app 内部。
+  原因：事件委托绑定在 #app 上（见 src/ui/app.js bindEvents），
+  若弹窗在 #app 之外，点击事件会在 #app 处停止冒泡，
+  弹窗内所有按钮（删除/关闭/重命名/载入）都收不到点击。
+-->
 <div id="app">
   <div id="storage-warning" hidden></div>
   <div id="stale-banner-slot"></div>
@@ -19,15 +25,16 @@
     <section class="panel" id="panel-center"><!--CENTER--></section>
     <aside class="panel" id="panel-right"><!--RIGHT--></aside>
   </main>
-</div>
 
-<div id="modal" hidden>
-  <div class="modal-box">
-    <div id="modal-body"></div>
+  <!-- 弹窗与提示条置于 #app 内，才能接收到委托事件 -->
+  <div id="modal" hidden>
+    <div class="modal-box">
+      <div id="modal-body"></div>
+    </div>
   </div>
-</div>
 
-<div id="toast" hidden></div>
+  <div id="toast" hidden></div>
+</div>
 
 <!--DATA-->
 <!--APP-->
