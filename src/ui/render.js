@@ -79,10 +79,11 @@ export function renderLeftPanel({ config = {}, byId, lights = {}, active, summar
       <li class="${cls('cat-item', active === cat && 'is-active', !selected && 'is-empty', isInvalid && 'is-invalid')}"
           data-category="${esc(cat)}"
           title="${esc(titleText)}">
-        <span class="cat-mark">${selected ? '●' : '○'}</span>
-        <span class="cat-name">${esc(CATEGORY_LABELS[cat])}</span>
+        <div class="cat-head">
+          <span class="cat-name">${esc(CATEGORY_LABELS[cat])}</span>
+          <span class="cat-light" data-level="${esc(light)}">${icon}</span>
+        </div>
         <span class="cat-value">${esc(shortName)}</span>
-        <span class="cat-light" data-level="${esc(light)}">${icon}</span>
       </li>`;
   }).join('');
 
@@ -108,15 +109,77 @@ export function renderLeftPanel({ config = {}, byId, lights = {}, active, summar
 }
 
 /**
- * 失效引用提示条
+ * 配置概览（数字条）
  *
- * 场景：数据升级后旧配置可能引用到已不存在的型号 ID，
- * 或用户清除了自己用 CSV 导入的自定义数据。
- * 这类品类在左栏显示 ⚠️，但只给图标用户看不懂，
- * 所以这里给一条带处理动作的说明。
+ * 置于工作区顶部，把「这次配得怎么样」压缩成 4 个可扫读的数字：
+ * 已选进度 / 兼容性问题 / 整机峰值功耗 / 建议电源瓦数。
+ * 表格与右栏面板自然退到次要位置。
  *
- * @param {Array<string>} invalidCategories 失效的品类 key 列表
+ * @param {object} o
+ * @param {object} o.summary    selectionSummary 结果
+ * @param {object} o.counts     { error, warn, info }
+ * @param {object} o.power      computePower 结果
+ * @param {number} [o.onSuggestPsu] 建议电源档位（可点击跳转筛选）
  */
+export function renderOverview({ summary = {}, counts = {}, power, onSuggestPsu }) {
+  const err = counts.error || 0;
+  const warn = counts.warn || 0;
+  const info = counts.info || 0;
+
+  const problemLevel = err > 0 ? 'error' : warn > 0 ? 'warn' : 'ok';
+  const problemValue = err > 0 ? err : warn > 0 ? warn : 0;
+  const problemUnit = err > 0 ? '错误' : warn > 0 ? '警告' : '无冲突';
+
+  const peak = power?.peak ?? null;
+  const rec = power?.recommendedPsu ?? null;
+  const cur = power?.psuWattage ?? null;
+  const margin = power?.margin ?? null;
+
+  const marginLevel = power?.level && power.level !== 'ok' ? power.level : null;
+
+  return `
+    <div class="overview">
+      <div class="ov-cell">
+        <div class="ov-label">已选配件</div>
+        <div class="ov-value">
+          ${summary?.selected ?? 0}<span class="ov-unit">/ ${summary?.total ?? 8}</span>
+        </div>
+        <div class="ov-sub">未选 ${summary?.unselected ?? 8}</div>
+      </div>
+
+      <div class="ov-cell">
+        <div class="ov-label">兼容性</div>
+        <div class="ov-value" data-level="${esc(problemLevel)}">
+          ${problemValue}<span class="ov-unit">${problemUnit}</span>
+        </div>
+        <div class="ov-sub">
+          ${info > 0 ? `🔵 ${info} 条提示` : (err === 0 && warn === 0 ? '全部通过' : '　')}
+        </div>
+      </div>
+
+      <div class="ov-cell">
+        <div class="ov-label">整机峰值功耗</div>
+        <div class="ov-value">${peak ?? '—'}<span class="ov-unit">W</span></div>
+        <div class="ov-sub">按各部件峰值功耗求和</div>
+      </div>
+
+      <div class="ov-cell">
+        <div class="ov-label">建议电源</div>
+        <div class="ov-value"${marginLevel ? ` data-level="${esc(marginLevel)}"` : ''}>
+          ≥${rec ?? '—'}<span class="ov-unit">W</span>
+        </div>
+        <div class="ov-sub">
+          ${cur !== null
+            ? `当前 ${cur}W · 余量 ${margin}%`
+            : (onSuggestPsu && rec ? `<button class="ov-link" data-action="suggest-psu" data-watts="${esc(rec)}">去选电源 →</button>` : '未选电源')}
+        </div>
+      </div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 失效引用提示条
+// ══════════════════════════════════════════════════════════════
 export function renderStaleBanner(invalidCategories = []) {
   if (invalidCategories.length === 0) return '';
   const names = invalidCategories.map((c) => CATEGORY_LABELS[c] || c).join('、');
@@ -396,16 +459,20 @@ export function renderTable({ category, items = [], checkCandidate, isSelected, 
         const cond = conditionLabel(rec.condition);
         const custom = rec.custom ? '<span class="badge badge-custom">自定义</span>' : '';
         const condBadge = cond ? `<span class="badge badge-cond">${esc(cond)}</span>` : '';
-        return `<td class="main">${esc(rec.name)}${condBadge}${custom}</td>`;
+        // 冲突标记放进型号单元格，避免另占一列
+        const flag = conflict
+          ? `<span class="row-flag" title="${esc(check.findings[0]?.reason || '与当前配置存在兼容问题')}">${LEVEL_ICONS[check.level]}</span>`
+          : '';
+        return `<td class="main">${esc(rec.name)}${condBadge}${custom}${flag}</td>`;
       }
       return `<td${c.num ? ' class="num"' : ''}>${esc(val)}</td>`;
     }).join('');
 
-    // 行内冲突提示（PRD 6.5.2：不兼容仍可点选，只在行内说明原因）
+    // 冲突详情行：默认隐藏，hover 该型号行时才显示（解决"红条太吵"）
     const conflictRow = conflict
       ? `<tr class="conflict-row" data-level="${esc(check.level)}">
            <td colspan="${cols.length + 2}">
-             ${LEVEL_ICONS[check.level]} ${esc(check.findings[0]?.reason || '与当前配置存在兼容问题')}
+             ${esc(check.findings[0]?.reason || '与当前配置存在兼容问题')}
              ${check.findings[0]?.refs?.length
                ? check.findings[0].refs
                    .map((r) => `<button type="button" class="link" data-goto="${esc(r.category)}">查看${esc(CATEGORY_LABELS[r.category] || r.category)}</button>`)
@@ -738,7 +805,7 @@ export function renderPowerPanel({ power }) {
 // 顶部栏（PRD 6.3，**不含预算**）
 // ══════════════════════════════════════════════════════════════════
 
-export function renderTopBar({ schemes = [], currentScheme = '', dirty = false }) {
+export function renderTopBar({ schemes = [], currentScheme = '', dirty = false, theme = 'dark' }) {
   const opts = schemes
     .map((s) => `<option value="${esc(s)}"${s === currentScheme ? ' selected' : ''}>${esc(s)}</option>`)
     .join('');
@@ -759,6 +826,8 @@ export function renderTopBar({ schemes = [], currentScheme = '', dirty = false }
     <button type="button" class="btn-ghost" data-action="rules-help">❓规则说明</button>
     <button type="button" class="btn-ghost" data-action="reset-all">↺全部重置</button>
     <span class="spacer"></span>
+    <button type="button" class="theme-toggle" data-action="toggle-theme"
+            title="切换浅色 / 深色主题">${theme === 'light' ? '☀ 浅色' : '🌙 深色'}</button>
     <button type="button" class="btn-ghost" data-action="toggle-right" title="收起/展开右侧栏">▶</button>`;
 }
 

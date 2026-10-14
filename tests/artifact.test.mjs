@@ -140,11 +140,13 @@ function descendants(el, acc = []) {
 /** 构造 window/document 环境 */
 function makeDom() {
   const byId = {};
-  for (const id of ['app', 'topbar', 'panel-left', 'panel-center', 'panel-right', 'modal', 'modal-body', 'toast', 'storage-warning', 'file-input']) {
+  for (const id of ['app', 'topbar', 'overview-slot', 'stale-banner-slot', 'panel-left', 'panel-center', 'panel-right', 'modal', 'modal-body', 'toast', 'storage-warning', 'file-input']) {
     const el = new El('div', { id });
     if (id === 'modal' || id === 'toast' || id === 'storage-warning') el.hidden = true;
     byId[id] = el;
   }
+
+  const documentElement = new El('html');
 
   const body = new El('body');
   body.classList = {
@@ -158,6 +160,7 @@ function makeDom() {
   const document = {
     readyState: 'complete',
     body,
+    documentElement,
     activeElement: null,
     getElementById: (id) => byId[id] || null,
     querySelector: (sel) => {
@@ -167,7 +170,7 @@ function makeDom() {
       if (m) {
         const key = m[1].replace(/-([a-z])/g, (x, c) => c.toUpperCase());
         const want = m[2];
-        for (const el of [byId.app, byId['panel-center'], byId['panel-right'], byId.topbar, byId['panel-left'], byId['modal-body']]) {
+        for (const el of [byId.app, byId['panel-center'], byId['panel-right'], byId.topbar, byId['panel-left'], byId['modal-body'], byId['overview-slot']]) {
           for (const d of descendants(el)) {
             if (d.dataset?.[key] !== undefined && (!want || d.dataset[key] === want)) return d;
           }
@@ -181,7 +184,7 @@ function makeDom() {
       const key = m[1].replace(/-([a-z])/g, (x, c) => c.toUpperCase());
       const want = m[2];
       const out = [];
-      for (const el of [byId.app, byId['panel-center'], byId['panel-right'], byId.topbar, byId['panel-left'], byId['modal-body']]) {
+      for (const el of [byId.app, byId['panel-center'], byId['panel-right'], byId.topbar, byId['panel-left'], byId['modal-body'], byId['overview-slot']]) {
         for (const d of descendants(el)) {
           if (d.dataset?.[key] !== undefined && (!want || d.dataset[key] === want)) out.push(d);
         }
@@ -210,6 +213,8 @@ function makeDom() {
     location: { href: 'file:///dist/装机助手.html' },
     setTimeout: (fn, ms) => setTimeout(fn, ms),
     clearTimeout: (id) => clearTimeout(id),
+    // 主题：跟随系统 —— shim 默认"无偏好"，落到深色
+    matchMedia: (q) => ({ matches: false, media: q, addListener() {}, removeListener() {} }),
     console,
     Blob: globalThis.Blob,
     URL: globalThis.URL,
@@ -219,7 +224,7 @@ function makeDom() {
     confirm: () => true,
   };
 
-  return { window, document, localStorage, byId, body };
+  return { window, document, localStorage, byId, body, documentElement };
 }
 
 /** 取出产物内联脚本 */
@@ -302,6 +307,23 @@ test('产物冒烟：脚本能在最小 DOM 环境中完整执行（验证模块
   assert.ok(!logs.some((l) => l.startsWith('ERROR')), `不应有运行时错误: ${logs.filter((l) => l.startsWith('ERROR')).join('; ')}`);
 });
 
+/** 供后续测试复用的 vm sandbox 工厂 */
+function makeSandbox(dom) {
+  const sandbox = {
+    window: dom.window,
+    document: dom.document,
+    localStorage: dom.localStorage,
+    console: { log: () => {}, error: () => {}, warn: () => {} },
+    setTimeout, clearTimeout, Blob: globalThis.Blob, URL: globalThis.URL,
+    TextEncoder, TextDecoder,
+    Map, Set, Array, Object, JSON, Math, Date, Number, String, Boolean,
+    RegExp, Error, Promise, parseInt, parseFloat, isNaN,
+    alert: () => {}, prompt: () => null, confirm: () => true,
+  };
+  sandbox.globalThis = sandbox;
+  return sandbox;
+}
+
 test('产物冒烟：渲染真实发生 —— 左栏 8 品类、右栏两面板都出现在 DOM', { skip: !hasDist && '未构建' }, () => {
   const dom = makeDom();
   const code = extractScript();
@@ -345,6 +367,30 @@ test('产物冒烟：渲染真实发生 —— 左栏 8 品类、右栏两面板
   const top = dom.byId.topbar.innerHTML;
   assert.ok(top.includes('装机助手'), '顶部栏应有品牌');
   assert.ok(top.includes('data-action="export-open"'), '顶部栏应有导出按钮');
+});
+
+test('产物冒烟：配置概览数字条与主题切换已渲染', { skip: !hasDist && '未构建' }, () => {
+  const dom = makeDom();
+  const code = extractScript();
+  const sandbox = makeSandbox(dom);
+  vm.runInContext(code, vm.createContext(sandbox), { filename: 'dist-artifact.js' });
+
+  // 概览数字条
+  const ov = dom.byId['overview-slot'].innerHTML;
+  assert.ok(ov.includes('ov-label'), '概览数字条应渲染');
+  assert.ok(ov.includes('已选配件'), '应含「已选配件」');
+  assert.ok(ov.includes('整机峰值功耗'), '应含「整机峰值功耗」');
+  assert.ok(ov.includes('建议电源'), '应含「建议电源」');
+
+  // 顶栏主题切换按钮
+  const top = dom.byId.topbar.innerHTML;
+  assert.ok(top.includes('data-action="toggle-theme"'), '顶栏应有主题切换按钮');
+
+  // 主题已应用到 <html data-theme>（shim 的 matchMedia 恒为 false → 应落深色）
+  assert.equal(
+    dom.documentElement.getAttribute('data-theme'), 'dark',
+    '默认应应用深色主题',
+  );
 });
 
 test('产物冒烟：界面不出现价格（A15 在真实产物上复验）', { skip: !hasDist && '未构建' }, () => {

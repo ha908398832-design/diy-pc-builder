@@ -18,7 +18,7 @@ import {
   renderLeftPanel, renderToolbar, renderTable, renderCards, renderDetail,
   renderCompare, renderCompatPanel, renderPowerPanel, renderTopBar,
   renderRulesHelp, renderEmptyGuide, renderSchemeManager, renderStaleBanner,
-  TABLE_COLUMNS,
+  renderOverview, TABLE_COLUMNS,
 } from './render.js';
 
 // ══════════════════════════════════════════════════════════════════
@@ -102,7 +102,43 @@ function visibleList(byId, resolved) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// 渲染
+// 主题（浅色 / 深色）
+// ══════════════════════════════════════════════════════════════════
+
+const THEME_KEY = 'zhuangji:theme';
+
+/** 读取偏好主题；未设置时跟随系统 */
+function getTheme() {
+  try {
+    const saved = localStorage?.getItem?.(THEME_KEY);
+    if (saved === 'light' || saved === 'dark') return saved;
+  } catch { /* localStorage 不可用时忽略 */ }
+  try {
+    if (window?.matchMedia?.('(prefers-color-scheme: light)').matches) return 'light';
+  } catch { /* 不支持则回落深色 */ }
+  return 'dark';
+}
+
+/** 应用主题到 <html data-theme> */
+function applyTheme(theme) {
+  // 容错：某些环境（极简 DOM、SSR、测试 shim）可能没有 documentElement
+  const el = document?.documentElement;
+  if (el && typeof el.setAttribute === 'function') {
+    el.setAttribute('data-theme', theme);
+  }
+}
+
+/** 切换并持久化 */
+function toggleTheme() {
+  const next = getTheme() === 'dark' ? 'light' : 'dark';
+  try { localStorage?.setItem?.(THEME_KEY, next); } catch { /* 忽略写入失败 */ }
+  applyTheme(next);
+  render();
+  toast(next === 'light' ? '已切换到浅色主题' : '已切换到深色主题');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 辅助
 // ══════════════════════════════════════════════════════════════════
 
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -127,6 +163,15 @@ function render() {
     schemes: store.schemeNames(),
     currentScheme: s.currentScheme,
     dirty: s.dirty,
+    theme: getTheme(),
+  });
+
+  // 配置概览（数字条）
+  $('#overview-slot').innerHTML = renderOverview({
+    summary: d.summary,
+    counts: d.result.counts,
+    power: d.result.power,
+    onSuggestPsu: true,
   });
 
   // 左栏
@@ -299,6 +344,9 @@ function bindEvents() {
         break;
       case 'toggle-right':
         store.toggleRightCollapsed();
+        break;
+      case 'toggle-theme':
+        toggleTheme();
         break;
       case 'sort-dir':
         store.toggleSortDir();
@@ -816,6 +864,7 @@ function toast(msg) {
 // ══════════════════════════════════════════════════════════════════
 
 export function start() {
+  applyTheme(getTheme());
   render();
   bindEvents();
   // 启动时把数据规模写到控制台，便于确认内联数据已加载
