@@ -1,5 +1,7 @@
 # 装机助手
 
+[![CI](https://github.com/ha908398832-design/diy-pc-builder/actions/workflows/ci.yml/badge.svg)](https://github.com/ha908398832-design/diy-pc-builder/actions/workflows/ci.yml)
+
 **单文件离线网页版的 DIY 装机选配与兼容性校验工具。**
 
 双击 `dist/装机助手.html` 即用 —— 无需安装、无需联网、无外部依赖。
@@ -7,6 +9,8 @@
 ```
 8 大品类 · 716 个硬件型号 · 32 条兼容性规则 · 500 项测试 · 零依赖
 ```
+
+[MIT 许可](LICENSE) · [贡献指南](CONTRIBUTING.md) · [数据来源与合规声明](NOTICE.md) · [安全策略](SECURITY.md) · [行为准则](CODE_OF_CONDUCT.md) · [更新日志](CHANGELOG.md)
 
 ---
 

@@ -34,6 +34,23 @@
 
 - 493 → **500 项**
 
+### 文档与工程
+
+- **开源配套文件补齐**：
+  - `.github/workflows/ci.yml` —— 零依赖 CI（没有 `npm install` 步骤），
+    Node 22 / 24 双档跑完整门禁；另设 `strip-third-party` job，每次提交都真实执行
+    一次数据剥离后再跑门禁，让 `NOTICE.md` 中「移除第三方派生数据后仍能构建通过」
+    的承诺不会随时间悄悄失效
+  - `CODE_OF_CONDUCT.md` —— Contributor Covenant 2.1
+  - `SECURITY.md` —— 先交代本项目的攻击面（无服务端 / 不联网 / 不收集数据），
+    再列出真正在范围内的注入类问题；其中诚实记录了 `toCsv()` **尚未防护 CSV 公式注入**
+  - `.editorconfig` —— 锁定行尾与末尾换行，避免编辑器悄悄破坏 `check-reproducible`
+  - `.github/ISSUE_TEMPLATE/config.yml` —— 模板选择器与三个联系入口
+- **README 增加状态徽章与导航链接**（CI / 许可 / 贡献 / 数据声明 / 安全 / 行为准则）
+- 仓库全部提交的署名统一为
+  `ha908398832-design <342537163+ha908398832-design@users.noreply.github.com>`，
+  三个注解标签的 `tagger` 字段同步重建（发布日期保持不变）
+
 ### 待办
 
 - **主板派生字段待核实**：130 条主板中有 49 条派生自公开数据集，
