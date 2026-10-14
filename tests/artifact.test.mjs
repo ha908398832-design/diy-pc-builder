@@ -24,6 +24,23 @@ import vm from 'node:vm';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DIST = join(ROOT, 'dist', '装机助手.html');
 
+/**
+ * 从 data/*.json 汇总型号总数
+ * 用于断言产物内联的数据量与磁盘一致，避免把数字写死
+ * （写死的数字在数据扩充后会失效，属于测试脆弱性）
+ */
+function dataTotal() {
+  const cats = ['cpu', 'motherboard', 'gpu', 'memory', 'psu', 'case', 'cooler', 'storage'];
+  let n = 0;
+  for (const c of cats) {
+    const p = join(ROOT, 'data', `${c}.json`);
+    if (existsSync(p)) {
+      n += JSON.parse(readFileSync(p, 'utf8')).length;
+    }
+  }
+  return n;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // 最小 DOM shim
 // ══════════════════════════════════════════════════════════════════
@@ -276,7 +293,12 @@ test('产物冒烟：脚本能在最小 DOM 环境中完整执行（验证模块
   const loaded = logs.find((l) => l.includes('已加载'));
   assert.ok(loaded, `应输出启动日志，实际日志: ${JSON.stringify(logs)}`);
   const n = Number((loaded.match(/(\d+)\s*个型号/) || [])[1]);
-  assert.equal(n, 300, `应加载 300 个型号，实际 ${n}`);
+
+  // 期望数量从 data/*.json 实时汇总，避免把数字写死
+  // （v1.2 数据从 300 扩充到 476 时，写死的 300 曾导致本测试失败）
+  const expected = dataTotal();
+  assert.equal(n, expected, `应加载 ${expected} 个型号，实际 ${n}`);
+  assert.ok(n >= 300, `型号总数应至少 300，实际 ${n}`);
   assert.ok(!logs.some((l) => l.startsWith('ERROR')), `不应有运行时错误: ${logs.filter((l) => l.startsWith('ERROR')).join('; ')}`);
 });
 

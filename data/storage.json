@@ -792,5 +792,362 @@
     "nandType": "SLC",
     "dram": true,
     "heatsink": false
+  },
+  {
+    "id": "storage-samsung-pm961-512gb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "PM961 512GB",
+    "aliases": [
+      "pm961",
+      "PM961 512G",
+      "三星pm961"
+    ],
+    "year": 2016,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机盘，无官方保修；笔记本原厂 PCIe 3.0 x4 固态，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 500,
+    "pcieVersion": 3,
+    "readSpeed": 3000,
+    "writeSpeed": 1150,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 150,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-pm981-256gb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "PM981 256GB",
+    "aliases": [
+      "pm981",
+      "PM981 256G",
+      "三星pm981"
+    ],
+    "year": 2018,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机盘，无官方保修；品牌机/笔记本拆机 PCIe 3.0 x4 固态，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 256,
+    "pcieVersion": 3,
+    "readSpeed": 3000,
+    "writeSpeed": 1300,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 100,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-pm9a1-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "PM9A1 1TB",
+    "aliases": [
+      "pm9a1",
+      "PM9A1 1T",
+      "三星pm9a1"
+    ],
+    "year": 2020,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机盘，无官方保修；980 PRO 的 OEM 版本，PCIe 4.0 x4，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7000,
+    "writeSpeed": 5100,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn730-512gb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "黑盘 SN730 512GB",
+    "aliases": [
+      "sn730",
+      "WD SN730 512G"
+    ],
+    "year": 2019,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机盘，无官方保修；笔记本原厂 PCIe 3.0 x4 固态，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 500,
+    "pcieVersion": 3,
+    "readSpeed": 3400,
+    "writeSpeed": 2600,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 300,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn520-256gb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 SN520 256GB",
+    "aliases": [
+      "sn520",
+      "WD SN520 256G",
+      "SN520 2242"
+    ],
+    "year": 2018,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机盘，无官方保修；M.2 2242 短尺寸笔记本拆机盘，无独立 DRAM 缓存（HMB）",
+    "interface": "NVMe",
+    "formFactor": "M.2 2242",
+    "capacity": 256,
+    "pcieVersion": 3,
+    "readSpeed": 1700,
+    "writeSpeed": 1300,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 100,
+    "heatsink": false
+  },
+  {
+    "id": "storage-intel-s3520-480gb",
+    "category": "storage",
+    "brand": "英特尔",
+    "name": "DC S3520 480GB",
+    "aliases": [
+      "s3520",
+      "SSDSC2BB480G7",
+      "intel s3520"
+    ],
+    "year": 2016,
+    "condition": "oem",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "企业级拆机盘（洋垃圾）；Intel DC S3520 数据中心 SATA SSD，MLC 颗粒，带掉电保护，无官方保修",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 500,
+    "readSpeed": 550,
+    "writeSpeed": 500,
+    "nandType": "MLC",
+    "dram": true,
+    "tbw": 1300,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-pm883-960gb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "PM883 960GB",
+    "aliases": [
+      "pm883",
+      "PM883 960G",
+      "三星pm883"
+    ],
+    "year": 2018,
+    "condition": "oem",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "企业级拆机盘（洋垃圾）；数据中心 SATA SSD，标称容量 960GB，带掉电保护，无官方保修",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 960,
+    "readSpeed": 550,
+    "writeSpeed": 520,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1700,
+    "heatsink": false
+  },
+  {
+    "id": "storage-adata-su650-240gb",
+    "category": "storage",
+    "brand": "威刚",
+    "name": "SU650 240GB",
+    "aliases": [
+      "su650",
+      "ADATA SU650 240G"
+    ],
+    "year": 2018,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "2.5 英寸 SATA SSD，老平台 SATA2/SATA3 升级常用型号，无独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 240,
+    "readSpeed": 520,
+    "writeSpeed": 450,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 100,
+    "heatsink": false
+  },
+  {
+    "id": "storage-galax-tie-jia-zhan-jiang-240gb",
+    "category": "storage",
+    "brand": "影驰",
+    "name": "铁甲战将 240GB",
+    "aliases": [
+      "铁甲战将",
+      "galax 铁甲战将",
+      "战将240g"
+    ],
+    "year": 2017,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "2.5 英寸 SATA SSD，老平台入门 SSD，无独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 240,
+    "readSpeed": 500,
+    "writeSpeed": 450,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 80,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-wd10ezex-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 1TB (WD10EZEX)",
+    "aliases": [
+      "wd10ezex",
+      "蓝盘1t",
+      "WD 1TB 蓝盘"
+    ],
+    "year": 2012,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed"
+    ],
+    "notes": "机械硬盘（HDD），3.5 英寸 7200 转 64MB 缓存，CMR 传统垂直磁记录；nandType 为占位值，实际无 NAND",
+    "interface": "SATA",
+    "formFactor": "3.5\"",
+    "capacity": 1000,
+    "readSpeed": 200,
+    "writeSpeed": 200,
+    "nandType": "SLC",
+    "dram": true,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kioxia-rc10-1tb",
+    "category": "storage",
+    "brand": "铠侠",
+    "name": "RC10 1TB",
+    "aliases": [
+      "rc10",
+      "EXCERIA RC10 1T"
+    ],
+    "year": 2020,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 3.0 x4 入门老型号，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 1700,
+    "writeSpeed": 1600,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 400,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn550-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 SN550 1TB",
+    "aliases": [
+      "sn550",
+      "WD SN550 1T"
+    ],
+    "year": 2019,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 3.0 x4 主流老型号，无独立 DRAM 缓存（HMB），做系统盘性能会随盘满而降级",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 2400,
+    "writeSpeed": 1950,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-intel-670p-1tb",
+    "category": "storage",
+    "brand": "英特尔",
+    "name": "670p 1TB",
+    "aliases": [
+      "670p",
+      "SSDPEKNU010TZX1",
+      "intel 670p"
+    ],
+    "year": 2021,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 3.0 x4 QLC，无独立 DRAM 缓存，是 W11「QLC 做系统盘」的老平台样本",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 3500,
+    "writeSpeed": 2500,
+    "nandType": "QLC",
+    "dram": false,
+    "heatsink": false
   }
 ]

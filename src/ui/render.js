@@ -62,17 +62,23 @@ export function renderLeftPanel({ config = {}, byId, lights = {}, active, summar
     const selected = ids.length > 0;
     const recs = ids.map((id) => (byId?.get ? byId.get(id) : null)).filter(Boolean);
 
-    const shortName = recs.length
-      ? recs[0].name.length > 12 ? `${recs[0].name.slice(0, 11)}…` : recs[0].name
-      : '未选';
-
     const light = lights[cat] || (selected ? 'ok' : 'unselected');
     const icon = STATUS_ICONS[light] || '⚪';
+    // 失效引用：配置里有 ID 但库里找不到对应型号
+    const isInvalid = light === 'invalid';
+
+    const shortName = recs.length
+      ? (recs[0].name.length > 12 ? `${recs[0].name.slice(0, 11)}…` : recs[0].name)
+      : (isInvalid ? '型号已失效' : '未选');
+
+    const titleText = isInvalid
+      ? `${CATEGORY_LABELS[cat]}：已选型号在当前型号库中不存在（可能是数据更新后该型号被移除，或你清除了导入的自定义数据）。请重新选择。`
+      : `${CATEGORY_LABELS[cat]}：${recs.map((r) => r.name).join('、') || '未选择'}`;
 
     return `
-      <li class="${cls('cat-item', active === cat && 'is-active', !selected && 'is-empty')}"
+      <li class="${cls('cat-item', active === cat && 'is-active', !selected && 'is-empty', isInvalid && 'is-invalid')}"
           data-category="${esc(cat)}"
-          title="${esc(CATEGORY_LABELS[cat])}：${esc(recs.map((r) => r.name).join('、') || '未选择')}">
+          title="${esc(titleText)}">
         <span class="cat-mark">${selected ? '●' : '○'}</span>
         <span class="cat-name">${esc(CATEGORY_LABELS[cat])}</span>
         <span class="cat-value">${esc(shortName)}</span>
@@ -98,6 +104,34 @@ export function renderLeftPanel({ config = {}, byId, lights = {}, active, summar
         <span class="lv lv-warn">🟡 ${rc.warn}</span>
         <span class="lv lv-info">🔵 ${rc.info}</span>
       </div>
+    </div>`;
+}
+
+/**
+ * 失效引用提示条
+ *
+ * 场景：数据升级后旧配置可能引用到已不存在的型号 ID，
+ * 或用户清除了自己用 CSV 导入的自定义数据。
+ * 这类品类在左栏显示 ⚠️，但只给图标用户看不懂，
+ * 所以这里给一条带处理动作的说明。
+ *
+ * @param {Array<string>} invalidCategories 失效的品类 key 列表
+ */
+export function renderStaleBanner(invalidCategories = []) {
+  if (invalidCategories.length === 0) return '';
+  const names = invalidCategories.map((c) => CATEGORY_LABELS[c] || c).join('、');
+
+  return `
+    <div class="stale-banner" id="stale-banner">
+      <span class="stale-icon">⚠️</span>
+      <span class="stale-text">
+        有 <b>${invalidCategories.length}</b> 个已选配件在当前型号库中找不到（${esc(names)}）。
+        可能是数据更新后该型号被移除，或你清除了导入的自定义数据。
+      </span>
+      <button type="button" class="btn-ghost" data-action="clear-stale"
+              title="移除这些失效的引用，其余配置保持不变">清除失效项</button>
+      <button type="button" class="btn-ghost" data-action="dismiss-stale"
+              title="暂时忽略提示">忽略</button>
     </div>`;
 }
 
@@ -162,7 +196,18 @@ export const QUICK_TAGS = {
   ],
 };
 
-export function renderToolbar({ category, query = '', view = 'table', sort = null, includeUsed = false }) {
+/**
+ * @param {object} o
+ * @param {string} o.category
+ * @param {string} [o.query]
+ * @param {'table'|'card'} [o.view]
+ * @param {object} [o.sort]
+ * @param {boolean} [o.includeUsed]  是否含二手
+ * @param {number} [o.usedCount]     该品类下二手/矿卡/洋垃圾的数量，用于提示
+ */
+export function renderToolbar({
+  category, query = '', view = 'table', sort = null, includeUsed = false, usedCount = 0,
+}) {
   const tags = (QUICK_TAGS[category] || [{ key: 'all', label: '全部' }])
     .map((t) => `<button type="button" class="tag" data-quick="${esc(t.key)}">${esc(t.label)}</button>`)
     .join('');
@@ -190,9 +235,9 @@ export function renderToolbar({ category, query = '', view = 'table', sort = nul
     </div>
     <div class="toolbar-quick">
       <span class="quick-label">快捷</span>${tags}
-      <label class="used-toggle">
+      <label class="used-toggle" title="二手 / 矿卡 / 洋垃圾（默认不显示）">
         <input type="checkbox" data-role="include-used"${includeUsed ? ' checked' : ''}>
-        含二手
+        含二手${usedCount > 0 ? `（${usedCount}）` : ''}
       </label>
     </div>`;
 }
@@ -706,6 +751,8 @@ export function renderTopBar({ schemes = [], currentScheme = '', dirty = false }
     </label>
     <button type="button" class="btn-ghost" data-action="scheme-new">＋新建</button>
     <button type="button" class="btn-ghost" data-action="save">💾保存${dirty ? '<span class="dot"></span>' : ''}</button>
+    <button type="button" class="btn-ghost" data-action="scheme-manage"
+            title="管理方案（重命名 / 删除）">🗂管理</button>
     <button type="button" class="btn-ghost" data-action="compare-open">⚖对比</button>
     <button type="button" class="btn-ghost" data-action="export-open">📤导出</button>
     <button type="button" class="btn-ghost" data-action="import-open">📥导入CSV</button>
@@ -713,6 +760,90 @@ export function renderTopBar({ schemes = [], currentScheme = '', dirty = false }
     <button type="button" class="btn-ghost" data-action="reset-all">↺全部重置</button>
     <span class="spacer"></span>
     <button type="button" class="btn-ghost" data-action="toggle-right" title="收起/展开右侧栏">▶</button>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 方案管理（M8：新建 / 重命名 / 删除 / 切换）
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * 渲染方案管理弹窗
+ *
+ * 每个方案一行，提供「载入 / 重命名 / 删除」三个操作。
+ * 删除与覆盖重名都需要二次确认，由 app.js 负责询问，这里只渲染按钮。
+ *
+ * @param {object} o
+ * @param {Array}  o.schemes        [{ name, savedAt, selected, counts: {error,warn}, peak }]
+ * @param {string} o.currentScheme  当前方案名
+ */
+export function renderSchemeManager({ schemes = [], currentScheme = '' }) {
+  if (schemes.length === 0) {
+    return `
+      <div class="modal-head">
+        <h2>方案管理</h2>
+        <button type="button" class="btn-ghost" data-action="modal-close">关闭</button>
+      </div>
+      <div class="empty-hint">
+        还没有保存过方案。<br>
+        <span class="muted">选好一套配置后点顶部「💾保存」即可存为方案。</span>
+      </div>`;
+  }
+
+  const fmtTime = (ts) => {
+    if (!ts) return '—';
+    try {
+      const d = new Date(ts);
+      const p = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+    } catch { return '—'; }
+  };
+
+  const rows = schemes.map((s) => {
+    const isCurrent = s.name === currentScheme;
+    const c = s.counts || { error: 0, warn: 0 };
+    const compat = c.error > 0
+      ? `<span class="lv-error">🔴 ${c.error}</span>`
+      : c.warn > 0
+        ? `<span class="lv-warn">🟡 ${c.warn}</span>`
+        : '<span class="lv-ok">✅ 无冲突</span>';
+
+    return `
+      <tr data-scheme-row="${esc(s.name)}"${isCurrent ? ' class="is-current"' : ''}>
+        <td class="sch-name">
+          ${esc(s.name)}
+          ${isCurrent ? '<span class="badge">当前</span>' : ''}
+        </td>
+        <td class="sch-parts">${s.parts ?? 0} 件</td>
+        <td class="sch-compat">${compat}</td>
+        <td class="sch-power">${s.peak != null ? `${s.peak}W` : '—'}</td>
+        <td class="sch-time muted small">${fmtTime(s.savedAt)}</td>
+        <td class="sch-ops">
+          <button type="button" class="btn-ghost" data-scheme-load="${esc(s.name)}"
+                  ${isCurrent ? 'disabled title="已是当前方案"' : 'title="载入此方案"'}>载入</button>
+          <button type="button" class="btn-ghost" data-scheme-rename="${esc(s.name)}"
+                  title="重命名">重命名</button>
+          <button type="button" class="btn-ghost btn-danger" data-scheme-delete="${esc(s.name)}"
+                  title="删除此方案">删除</button>
+        </td>
+      </tr>`;
+  }).join('');
+
+  return `
+    <div class="modal-head">
+      <h2>方案管理（${schemes.length} 套）</h2>
+      <button type="button" class="btn-ghost" data-action="modal-close">关闭</button>
+    </div>
+    <div class="modal-toolbar">
+      <span class="muted small">删除方案不会影响当前正在编辑的配置。</span>
+    </div>
+    <table class="compare-table scheme-table">
+      <thead>
+        <tr>
+          <th>方案名</th><th>配件</th><th>兼容性</th><th>功耗</th><th>保存时间</th><th>操作</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 // ══════════════════════════════════════════════════════════════════

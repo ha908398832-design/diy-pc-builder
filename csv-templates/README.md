@@ -38,11 +38,11 @@ node tools/validate-data.mjs
 
 | 品类 | 模板文件 | 字段数 | 必填 | 建议型号数 |
 |---|---|---|---|---|
-| CPU | `cpu.csv` | 29 | 18 | ≥48 |
-| 主板 | `motherboard.csv` | 28 | 16 | ≥48 |
-| 显卡 | `gpu.csv` | 26 | 16 | ≥44 |
-| 内存 | `memory.csv` | 20 | 11 | ≥32 |
-| 电源 | `psu.csv` | 21 | 13 | ≥32 |
-| 机箱 | `case.csv` | 23 | 15 | ≥32 |
-| 散热器 | `cooler.csv` | 20 | 9 | ≥32 |
-| 硬盘 | `storage.csv` | 20 | 11 | ≥32 |
+| CPU | `cpu.csv` | 29 | 18 | ≥80 |
+| 主板 | `motherboard.csv` | 28 | 16 | ≥80 |
+| 显卡 | `gpu.csv` | 26 | 16 | ≥70 |
+| 内存 | `memory.csv` | 20 | 11 | ≥55 |
+| 电源 | `psu.csv` | 21 | 13 | ≥50 |
+| 机箱 | `case.csv` | 23 | 15 | ≥50 |
+| 散热器 | `cooler.csv` | 20 | 9 | ≥45 |
+| 硬盘 | `storage.csv` | 20 | 11 | ≥45 |

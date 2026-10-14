@@ -66,6 +66,32 @@ input, select, textarea { font-family: inherit; font-size: inherit; }
   border-bottom: 1px solid #6b5416;
 }
 
+/* 失效引用提示条（数据升级后旧配置引用了不存在的型号）*/
+.stale-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 14px;
+  background: #4a3612;
+  border-bottom: 1px solid #6b4e16;
+  color: #ffd479;
+  font-size: 12px;
+}
+.stale-banner .stale-icon { font-size: 14px; flex: 0 0 auto; }
+.stale-banner .stale-text { flex: 1; }
+.stale-banner .btn-ghost {
+  background: #5a4416;
+  border-color: #7d6120;
+  color: #ffe6a8;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+.stale-banner .btn-ghost:hover { background: #6b5220; }
+
+/* 左栏失效项 */
+.cat-item.is-invalid .cat-value { color: var(--warn); }
+.cat-item.is-invalid .cat-light { filter: saturate(1.2); }
+
 /* ── 顶部栏（PRD 6.3，不含预算）──────────────────────────────── */
 
 #topbar {
@@ -677,6 +703,23 @@ tr.is-selected .btn-pick { background: var(--accent-2); color: #fff; border-colo
 }
 
 .scheme-compare { margin-top: 6px; }
+
+/* 方案管理表 */
+.scheme-table { margin-top: 4px; }
+.scheme-table td.sch-name { font-weight: 500; white-space: nowrap; }
+.scheme-table td.sch-parts,
+.scheme-table td.sch-power { font-variant-numeric: tabular-nums; }
+.scheme-table td.sch-time { white-space: nowrap; }
+.scheme-table td.sch-ops { white-space: nowrap; }
+.scheme-table td.sch-ops .btn-ghost { padding: 2px 8px; font-size: 12px; margin-right: 4px; }
+.scheme-table tr.is-current { background: rgba(79, 140, 255, .1); }
+.scheme-table tr.is-current td.sch-name { color: var(--accent); }
+
+.btn-danger { color: #ff8f8f; }
+.btn-danger:hover { background: #4a2020; color: #ffb3b3; border-color: #7a3a3a; }
+.btn-ghost:disabled { opacity: .4; cursor: not-allowed; }
+
+.lv-ok { color: var(--ok); }
 
 /* ── Toast ───────────────────────────────────────────────────── */
 

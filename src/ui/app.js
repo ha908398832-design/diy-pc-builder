@@ -17,7 +17,8 @@ import { buildExport, downloadBlob } from './export.js';
 import {
   renderLeftPanel, renderToolbar, renderTable, renderCards, renderDetail,
   renderCompare, renderCompatPanel, renderPowerPanel, renderTopBar,
-  renderRulesHelp, renderEmptyGuide, TABLE_COLUMNS,
+  renderRulesHelp, renderEmptyGuide, renderSchemeManager, renderStaleBanner,
+  TABLE_COLUMNS,
 } from './render.js';
 
 // ══════════════════════════════════════════════════════════════════
@@ -68,7 +69,13 @@ function derive() {
   for (const cat of CATEGORY_ORDER) resolved[cat] = selectedOf(cat, byId);
 
   const result = checkCompatibility({ resolved, config: store.state.config });
-  const lights = computeStatusLights({ findings: result.findings, config: store.state.config });
+  // 传入 resolved：让状态灯能识别「配置里的 ID 在型号库中找不到」的情况，
+  // 否则失效引用会显示成绿色「正常」（它其实没有任何配件）
+  const lights = computeStatusLights({
+    findings: result.findings,
+    config: store.state.config,
+    resolved,
+  });
   const ruleCounts = countFindings(result.findings);
   const summary = selectionSummary(store.state.config);
 
@@ -106,6 +113,15 @@ function render() {
   const d = derive();
   const v = visibleList(d.byId, d.resolved);
 
+  // 失效引用提示（数据升级后旧配置引用了不存在的型号）
+  const invalidCats = Object.entries(d.lights.lights)
+    .filter(([, lv]) => lv === 'invalid')
+    .map(([cat]) => cat);
+  const banner = $('#stale-banner-slot');
+  if (banner) {
+    banner.innerHTML = s.ui.staleDismissed ? '' : renderStaleBanner(invalidCats);
+  }
+
   // 顶部栏
   $('#topbar').innerHTML = renderTopBar({
     schemes: store.schemeNames(),
@@ -127,12 +143,27 @@ function render() {
   const compareRecs = (s.ui.compare || []).map((id) => d.byId.get(id)).filter(Boolean);
   const detailRec = s.ui.selectedDetail ? d.byId.get(s.ui.selectedDetail) : null;
 
+  // 默认隐藏的二手/矿卡/洋垃圾数量。
+  // 库里有大量二手主流型号，但 PRD M7-11 规定默认不显示；
+  // 若不提示数量，用户会以为"没有二手可选"。
+  const usedCount = v.list.filter((r) => r.condition && r.condition !== 'new').length;
+
   $('#panel-center').innerHTML = `
-    ${renderToolbar({ category: s.ui.category, query: s.ui.query, view: s.ui.view, sort: s.ui.sort, includeUsed: s.ui.includeUsed })}
+    ${renderToolbar({
+      category: s.ui.category,
+      query: s.ui.query,
+      view: s.ui.view,
+      sort: s.ui.sort,
+      includeUsed: s.ui.includeUsed,
+      usedCount,
+    })}
     <div class="list-meta">
       <span>共 ${v.total} 个型号</span>
       <span>匹配 <b>${v.matched}</b></span>
-      ${s.ui.includeUsed ? '<span class="muted">已含二手</span>' : ''}
+      ${s.ui.query ? `<span class="muted">搜索「${escapeHtml(s.ui.query)}」</span>` : ''}
+      ${!s.ui.includeUsed && usedCount > 0
+        ? `<span class="muted">已隐藏 ${usedCount} 个二手/矿卡/洋垃圾（勾选上方「含二手」查看）</span>`
+        : ''}
     </div>
     <div class="list-wrap">
       ${v.items.length === 0 && !s.ui.query && Object.keys(s.ui.filters).length === 0
@@ -226,6 +257,11 @@ function bindEvents() {
       return;
     }
 
+    // 方案操作（M8）
+    if (t.dataset.schemeLoad) { store.loadScheme(t.dataset.schemeLoad); closeModal(); toast(`已载入方案「${t.dataset.schemeLoad}」`); return; }
+    if (t.dataset.schemeRename) { promptRenameScheme(t.dataset.schemeRename); return; }
+    if (t.dataset.schemeDelete) { promptDeleteScheme(t.dataset.schemeDelete); return; }
+
     // 过滤右栏
     if (t.dataset.filter) {
       store.setFindingFilter(t.dataset.filter);
@@ -272,6 +308,29 @@ function bindEvents() {
         break;
       case 'scheme-new':
         store.resetAll();
+        break;
+      case 'scheme-manage':
+        openSchemeManager();
+        break;
+      case 'clear-stale': {
+        // 清除失效引用：只清掉「配置里有 ID 但库里找不到」的项，其余配置保持
+        const dd = derive();
+        const stale = Object.entries(dd.lights.lights)
+          .filter(([, lv]) => lv === 'invalid')
+          .map(([cat]) => cat);
+        if (stale.length === 0) break;
+        store.update((st) => {
+          for (const cat of stale) {
+            if (cat === 'storage') st.config.storage = [];
+            else st.config[cat] = null;
+          }
+          st.ui.staleDismissed = false;
+        }, 'clear-stale');
+        toast(`已清除 ${stale.length} 个失效配件，请重新选择`);
+        break;
+      }
+      case 'dismiss-stale':
+        store.update((st) => { st.ui.staleDismissed = true; }, 'dismiss-stale');
         break;
       case 'compare-open':
         openSchemeCompare();
@@ -477,8 +536,74 @@ function promptSaveScheme() {
   const suggest = store.state.currentScheme || `方案 ${names.length + 1}`;
   const name = prompt('方案名称：', suggest);
   if (!name) return;
-  store.saveScheme(name.trim());
-  toast(`已保存方案「${name.trim()}」`);
+  const trimmed = name.trim();
+  if (!trimmed) return;
+
+  // 覆盖已存在的方案时明确确认，避免误覆盖
+  if (names.includes(trimmed) && trimmed !== store.state.currentScheme) {
+    if (!confirm(`方案「${trimmed}」已存在，要覆盖它吗？`)) return;
+  }
+  store.saveScheme(trimmed);
+  toast(`已保存方案「${trimmed}」`);
+}
+
+/** 组装方案管理所需的数据（含每套方案的配件数、兼容性、功耗） */
+function schemeRows() {
+  const byId = indexAll();
+  return store.schemeNames().map((name) => {
+    const scheme = store.state.schemes[name];
+    const cfg = scheme?.config || {};
+    let parts = 0;
+    for (const cat of CATEGORY_ORDER) {
+      const v = cfg[cat];
+      if (cat === 'storage') parts += Array.isArray(v) ? v.length : 0;
+      else if (v) parts += 1;
+    }
+    const res = checkCompatibility({ config: cfg, byId });
+    return {
+      name,
+      savedAt: scheme?.savedAt,
+      parts,
+      counts: res.counts,
+      peak: res.power?.peak ?? null,
+    };
+  });
+}
+
+/** 打开方案管理（新建 / 载入 / 重命名 / 删除） */
+function openSchemeManager() {
+  openModal('方案管理', renderSchemeManager({
+    schemes: schemeRows(),
+    currentScheme: store.state.currentScheme,
+  }));
+}
+
+/** 重命名方案（带重复名与空名校验） */
+function promptRenameScheme(oldName) {
+  const next = prompt('新的方案名称：', oldName);
+  if (next === null) return;               // 用户取消
+  const trimmed = next.trim();
+  if (!trimmed) { toast('方案名不能为空'); return; }
+  if (trimmed === oldName) return;          // 没改
+  if (store.schemeNames().includes(trimmed)) {
+    toast(`已存在名为「${trimmed}」的方案`);
+    return;
+  }
+  store.renameScheme(oldName, trimmed);
+  toast(`已重命名为「${trimmed}」`);
+  openSchemeManager();                      // 刷新列表
+}
+
+/** 删除方案（二次确认） */
+function promptDeleteScheme(name) {
+  const scheme = store.state.schemes[name];
+  if (!scheme) return;
+  if (!confirm(`确定删除方案「${name}」吗？此操作不可撤销。`)) return;
+
+  const wasCurrent = store.state.currentScheme === name;
+  store.deleteScheme(name);
+  toast(wasCurrent ? `已删除方案「${name}」（当前配置保持不变）` : `已删除方案「${name}」`);
+  openSchemeManager();                      // 刷新列表
 }
 
 /** 方案对比（PRD 6.7.1：只比型号、兼容性、功耗，不含价格） */

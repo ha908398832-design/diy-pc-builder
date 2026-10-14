@@ -92,7 +92,7 @@ export const CATEGORY_FIELDS = {
     label: 'CPU',
     file: 'cpu.json',
     csvFile: 'cpu.csv',
-    minCount: 48,
+    minCount: 80,
     fields: [
       { key: 'socket', type: 'string', required: true, enum: 'socket', label: '插槽', rules: ['E1', 'E9'], critical: true },
       { key: 'cores', type: 'number', required: true, label: '核心数', range: { min: 1, max: 128 } },
@@ -131,7 +131,7 @@ export const CATEGORY_FIELDS = {
     label: '主板',
     file: 'motherboard.json',
     csvFile: 'motherboard.csv',
-    minCount: 48,
+    minCount: 80,
     fields: [
       { key: 'socket', type: 'string', required: true, enum: 'socket', label: '插槽', rules: ['E1'], critical: true },
       { key: 'chipset', type: 'string', required: true, label: '芯片组', rules: ['W5'], critical: true },
@@ -159,12 +159,13 @@ export const CATEGORY_FIELDS = {
     label: '显卡',
     file: 'gpu.json',
     csvFile: 'gpu.csv',
-    minCount: 44,
+    minCount: 70,
     fields: [
       { key: 'chipset', type: 'string', required: true, label: '显示芯片', critical: true },
       { key: 'vram', type: 'number', required: true, unit: 'GB', label: '显存容量', range: { min: 1, max: 48 }, critical: true },
       { key: 'memoryType', type: 'string', required: false, label: '显存类型' },
-      { key: 'busWidth', type: 'number', required: false, unit: 'bit', label: '显存位宽', range: { min: 32, max: 1024 } },
+      // 上限需容纳 HBM 显存：HBM2 位宽可达 2048bit（如 Radeon Vega 56/64、Radeon VII）
+      { key: 'busWidth', type: 'number', required: false, unit: 'bit', label: '显存位宽', range: { min: 32, max: 8192 } },
       { key: 'length_mm', type: 'number', required: true, unit: 'mm', label: '显卡长度', range: { min: 100, max: 400 }, rules: ['E5'], critical: true },
       { key: 'thicknessSlots', type: 'number', required: true, unit: '槽', label: '显卡厚度', range: { min: 1, max: 5 }, rules: ['E6'], critical: true },
       { key: 'height_mm', type: 'number', required: false, unit: 'mm', label: '显卡高度', range: { min: 80, max: 200 } },
@@ -185,7 +186,7 @@ export const CATEGORY_FIELDS = {
     label: '内存',
     file: 'memory.json',
     csvFile: 'memory.csv',
-    minCount: 32,
+    minCount: 55,
     fields: [
       { key: 'memoryType', type: 'string', required: true, enum: 'memoryType', label: '内存代数', rules: ['E2'], critical: true },
       { key: 'capacityPerModule', type: 'number', required: true, unit: 'GB', label: '单条容量', range: { min: 2, max: 128 }, critical: true },
@@ -205,7 +206,7 @@ export const CATEGORY_FIELDS = {
     label: '电源',
     file: 'psu.json',
     csvFile: 'psu.csv',
-    minCount: 32,
+    minCount: 50,
     fields: [
       { key: 'wattage', type: 'number', required: true, unit: 'W', label: '额定瓦数', range: { min: 200, max: 2000 }, rules: ['E10', 'W1', 'I1'], critical: true },
       { key: 'formFactor', type: 'string', required: true, enum: 'psuFormFactor', label: '电源规格', rules: ['E13'], critical: true },
@@ -226,7 +227,7 @@ export const CATEGORY_FIELDS = {
     label: '机箱',
     file: 'case.json',
     csvFile: 'case.csv',
-    minCount: 32,
+    minCount: 50,
     fields: [
       { key: 'formFactors', type: 'string[]', required: true, enum: 'formFactor', enumItem: true, minItems: 1, label: '支持板型', rules: ['E4'], critical: true },
       { key: 'maxGpuLength', type: 'number', required: true, unit: 'mm', label: '显卡限长', range: { min: 150, max: 600 }, rules: ['E5'], critical: true },
@@ -249,7 +250,7 @@ export const CATEGORY_FIELDS = {
     label: '散热器',
     file: 'cooler.json',
     csvFile: 'cooler.csv',
-    minCount: 32,
+    minCount: 45,
     fields: [
       { key: 'type', type: 'string', required: true, enum: 'coolerType', label: '类型', rules: ['E7', 'E8', 'W9'], critical: true },
       { key: 'height_mm', type: 'number', required: false, requiredIf: { field: 'type', equals: 'air' }, unit: 'mm', label: '风冷高度', range: { min: 20, max: 250 }, rules: ['E7'], critical: true },
@@ -269,7 +270,7 @@ export const CATEGORY_FIELDS = {
     label: '硬盘',
     file: 'storage.json',
     csvFile: 'storage.csv',
-    minCount: 32,
+    minCount: 45,
     fields: [
       { key: 'interface', type: 'string', required: true, enum: 'storageInterface', label: '接口', rules: ['E15'], critical: true },
       { key: 'formFactor', type: 'string', required: true, enum: 'storageFormFactor', label: '规格', critical: true },

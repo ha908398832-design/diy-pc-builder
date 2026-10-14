@@ -37,6 +37,7 @@ export function defaultState() {
       includeUsed: false,
       selectedDetail: null, // 当前详情区展示的记录 id
       findingFilter: 'all',
+      staleDismissed: false, // 是否忽略「失效引用」提示
     },
     custom: {},   // { cpu: [...], ... } CSV 导入的记录
     schemes: {},  // { 方案名: { config, savedAt } }

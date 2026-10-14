@@ -47,31 +47,45 @@ export const CATEGORY_ORDER = [
 // ── CPU 插槽 ────────────────────────────────────────────────────────
 // 用于 E1（CPU↔主板）、E9（散热器支持插槽）
 export const SOCKETS = [
-  // AMD 桌面
+  // AMD 桌面（含二手主流）
+  'AM3+',
+  'FM2+',
   'AM4',
   'AM5',
-  // Intel 桌面
-  'LGA1200',
-  'LGA1700',
-  'LGA1851',
+  // Intel 桌面（含二手主流）
+  'LGA1150',   // 4 代 Haswell / 5 代 Broadwell
+  'LGA1151',   // 6/7 代 Skylake-Kaby Lake
+  'LGA1151-2', // 8/9 代 Coffee Lake（针脚同为 1151 但电气不兼容，故区分）
+  'LGA1155',   // 2/3 代 Sandy-Ivy Bridge
+  'LGA1156',   // 1 代 Lynnfield
+  'LGA1366',   // 初代 i7 至尊 / Xeon 5500
+  'LGA1200',   // 10/11 代 Comet-Rocket Lake
+  'LGA1700',   // 12/13/14 代
+  'LGA1851',   // Core Ultra 200S
   // 二手 / 洋垃圾平台（PRD 3.1.2）
-  'LGA2011-3',
-  'LGA2066',
-  'LGA1151',
-  'LGA1150',
+  'LGA2011',   // Xeon E5 v1/v2（初代 X79）
+  'LGA2011-3', // Xeon E5 v3/v4（X99）
+  'LGA2066',   // Xeon W / i9 至尊（X299）
 ];
 
 /** 插槽 → 所属平台，用于 E1 文案与 I3 代际提示 */
 export const SOCKET_PLATFORM = {
   AM4: 'AMD',
   AM5: 'AMD',
+  'AM3+': 'AMD',
+  'FM2+': 'AMD',
   LGA1200: 'Intel',
   LGA1700: 'Intel',
   LGA1851: 'Intel',
+  LGA1150: 'Intel',
+  LGA1151: 'Intel',
+  'LGA1151-2': 'Intel',
+  LGA1155: 'Intel',
+  LGA1156: 'Intel',
+  LGA1366: 'Intel',
+  LGA2011: 'Intel',
   'LGA2011-3': 'Intel',
   LGA2066: 'Intel',
-  LGA1151: 'Intel',
-  LGA1150: 'Intel',
 };
 
 // ── 主板板型 ────────────────────────────────────────────────────────
@@ -139,20 +153,25 @@ export const LEVEL_ICONS = { error: '🔴', warn: '🟡', info: '🔵' };
 export const LEVEL_SEVERITY = { error: 3, warn: 2, info: 1 };
 
 /** 品类状态灯取值（PRD 4.4） */
-export const STATUS_LIGHTS = ['error', 'warn', 'info', 'ok', 'unselected'];
+export const STATUS_LIGHTS = ['error', 'warn', 'info', 'ok', 'invalid', 'unselected'];
 
 /**
  * 状态灯图标
  *
  * 必须覆盖 STATUS_LIGHTS 的全部取值：规则三级（error/warn/info）
- * 加上「已选无问题(ok)」「未选(unselected)」。
- * 漏掉 info 会让提示级品类拿到 undefined，界面上显示不出图标。
+ * 加上「已选正常(ok)」「失效引用(invalid)」「未选(unselected)」。
+ * 漏掉任一项会让对应品类拿到 undefined，界面显示不出图标。
+ *
+ * invalid 的含义：配置里记着某个型号 ID，但当前型号库里找不到它
+ * （数据升级后引用了已删除型号，或用户清除了自己导入的自定义数据）。
+ * 这种情况绝不能显示成绿色「正常」—— 它实际上没有任何配件。
  */
 export const STATUS_ICONS = {
   error: '🔴',
   warn: '🟡',
   info: '🔵',
   ok: '🟢',
+  invalid: '⚠️',
   unselected: '⚪',
 };
 

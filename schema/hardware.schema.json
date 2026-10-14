@@ -11,7 +11,7 @@
       "label": "CPU",
       "file": "cpu.json",
       "csvFile": "cpu.csv",
-      "minCount": 48,
+      "minCount": 80,
       "fieldCount": 29,
       "requiredCount": 18
     },
@@ -20,7 +20,7 @@
       "label": "主板",
       "file": "motherboard.json",
       "csvFile": "motherboard.csv",
-      "minCount": 48,
+      "minCount": 80,
       "fieldCount": 28,
       "requiredCount": 16
     },
@@ -29,7 +29,7 @@
       "label": "显卡",
       "file": "gpu.json",
       "csvFile": "gpu.csv",
-      "minCount": 44,
+      "minCount": 70,
       "fieldCount": 26,
       "requiredCount": 16
     },
@@ -38,7 +38,7 @@
       "label": "内存",
       "file": "memory.json",
       "csvFile": "memory.csv",
-      "minCount": 32,
+      "minCount": 55,
       "fieldCount": 20,
       "requiredCount": 11
     },
@@ -47,7 +47,7 @@
       "label": "电源",
       "file": "psu.json",
       "csvFile": "psu.csv",
-      "minCount": 32,
+      "minCount": 50,
       "fieldCount": 21,
       "requiredCount": 13
     },
@@ -56,7 +56,7 @@
       "label": "机箱",
       "file": "case.json",
       "csvFile": "case.csv",
-      "minCount": 32,
+      "minCount": 50,
       "fieldCount": 23,
       "requiredCount": 15
     },
@@ -65,7 +65,7 @@
       "label": "散热器",
       "file": "cooler.json",
       "csvFile": "cooler.csv",
-      "minCount": 32,
+      "minCount": 45,
       "fieldCount": 20,
       "requiredCount": 9
     },
@@ -74,7 +74,7 @@
       "label": "硬盘",
       "file": "storage.json",
       "csvFile": "storage.csv",
-      "minCount": 32,
+      "minCount": 45,
       "fieldCount": 20,
       "requiredCount": 11
     }
@@ -185,15 +185,22 @@
         "storage"
       ],
       "socket": [
+        "AM3+",
+        "FM2+",
         "AM4",
         "AM5",
+        "LGA1150",
+        "LGA1151",
+        "LGA1151-2",
+        "LGA1155",
+        "LGA1156",
+        "LGA1366",
         "LGA1200",
         "LGA1700",
         "LGA1851",
+        "LGA2011",
         "LGA2011-3",
-        "LGA2066",
-        "LGA1151",
-        "LGA1150"
+        "LGA2066"
       ],
       "formFactor": [
         "E-ATX",
@@ -352,15 +359,22 @@
         "socket": {
           "type": "string",
           "enum": [
+            "AM3+",
+            "FM2+",
             "AM4",
             "AM5",
+            "LGA1150",
+            "LGA1151",
+            "LGA1151-2",
+            "LGA1155",
+            "LGA1156",
+            "LGA1366",
             "LGA1200",
             "LGA1700",
             "LGA1851",
+            "LGA2011",
             "LGA2011-3",
-            "LGA2066",
-            "LGA1151",
-            "LGA1150"
+            "LGA2066"
           ],
           "title": "插槽",
           "description": "【关键字段】必须精确，不允许近似；参与规则: E1, E9"
@@ -586,15 +600,22 @@
         "socket": {
           "type": "string",
           "enum": [
+            "AM3+",
+            "FM2+",
             "AM4",
             "AM5",
+            "LGA1150",
+            "LGA1151",
+            "LGA1151-2",
+            "LGA1155",
+            "LGA1156",
+            "LGA1366",
             "LGA1200",
             "LGA1700",
             "LGA1851",
+            "LGA2011",
             "LGA2011-3",
-            "LGA2066",
-            "LGA1151",
-            "LGA1150"
+            "LGA2066"
           ],
           "title": "插槽",
           "description": "【关键字段】必须精确，不允许近似；参与规则: E1"
@@ -829,7 +850,7 @@
         "busWidth": {
           "type": "number",
           "minimum": 32,
-          "maximum": 1024,
+          "maximum": 8192,
           "title": "显存位宽",
           "description": "单位: bit"
         },
@@ -1587,15 +1608,22 @@
           "items": {
             "type": "string",
             "enum": [
+              "AM3+",
+              "FM2+",
               "AM4",
               "AM5",
+              "LGA1150",
+              "LGA1151",
+              "LGA1151-2",
+              "LGA1155",
+              "LGA1156",
+              "LGA1366",
               "LGA1200",
               "LGA1700",
               "LGA1851",
+              "LGA2011",
               "LGA2011-3",
-              "LGA2066",
-              "LGA1151",
-              "LGA1150"
+              "LGA2066"
             ]
           },
           "minItems": 1,
