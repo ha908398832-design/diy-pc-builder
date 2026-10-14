@@ -655,6 +655,87 @@ input[type="checkbox"] { accent-color: var(--accent); }
 /* 芯片行已选中变体时的轻微高亮 */
 .hw-table tr.chip-row[data-has-selected="1"] .chip-name { color: var(--accent); }
 
+/* 变体行：二手版本在「含二手」关闭时灰显，表明它不在当前筛选范围内 */
+.hw-table tr.variant-row.is-dimmed { opacity: .55; }
+.hw-table tr.variant-row.is-dimmed:hover { opacity: .85; }
+
+/* ══════════════════════════════════════════════════════════════
+   芯片组卡片（卡片模式的归并视图）
+   一张卡 = 一个芯片；展开后是该芯片各品牌的版本小卡
+   ══════════════════════════════════════════════════════════════ */
+.chip-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
+  border-radius: var(--r);
+  padding: var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap-sm);
+  transition: border-color .12s, background .12s;
+}
+.chip-card:hover { background: var(--hover); }
+.chip-card.is-expanded {
+  grid-column: 1 / -1;              /* 展开时占满整行，给版本小卡留空间 */
+  background: var(--raised);
+  border-color: var(--border-strong);
+}
+.chip-card.is-conflict { border-left-color: var(--error); }
+.chip-card[data-level="warn"] { border-left-color: var(--warn); }
+.chip-card[data-has-selected="1"] { border-left-color: var(--accent); }
+
+.chip-card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--gap-sm);
+}
+.chip-card .chip-count { margin-left: 0; }
+.chip-card-sel {
+  font-size: 11px;
+  color: var(--accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chip-expand-btn { margin-top: auto; align-self: flex-start; }
+
+/* 展开后的版本小卡容器：网格铺开在芯片卡内部 */
+.variant-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: var(--gap-sm);
+  margin-top: var(--gap-sm);
+  padding-top: var(--gap-sm);
+  border-top: 1px dashed var(--border-strong);
+}
+
+/* 展开后的版本小卡 */
+.variant-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--border-strong);
+  border-radius: var(--r-sm);
+  padding: var(--gap-sm) var(--gap);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.variant-card:hover { background: var(--hover); }
+.variant-card.is-selected { border-left-color: var(--accent); background: var(--accent-bg); }
+.variant-card.is-conflict { border-left-color: var(--error); }
+.variant-card.is-dimmed { opacity: .55; }
+.variant-card.is-dimmed:hover { opacity: .85; }
+.variant-card-spec {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--fg-2);
+}
+.variant-card .card-title { font-size: 12.5px; font-weight: 500; }
+.variant-card .btn-pick { align-self: flex-start; margin-top: 2px; }
+
 /* ══════════════════════════════════════════════════════════════
    表格
    ══════════════════════════════════════════════════════════════ */

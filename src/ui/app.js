@@ -18,7 +18,7 @@ import {
   renderLeftPanel, renderToolbar, renderTable, renderCards, renderDetail,
   renderCompare, renderCompatPanel, renderPowerPanel, renderTopBar,
   renderRulesHelp, renderEmptyGuide, renderSchemeManager, renderStaleBanner,
-  renderOverview, renderChipTable, TABLE_COLUMNS,
+  renderOverview, renderChipTable, renderChipCards, TABLE_COLUMNS,
 } from './render.js';
 import { groupByChipset, isGrouped, isSingleVariant } from '../core/grouping.js';
 
@@ -99,7 +99,16 @@ function visibleList(byId, resolved) {
     checkMap.set(rec.id, checkCandidate(category, rec, store.state.config, byId));
   }
 
-  return { category, items, total, matched, checkMap, list };
+  // 归并用列表：与上面同一套搜索/筛选/排序，但**不受「含二手」影响**。
+  // 原因：若按筛选后的结果归并，关闭「含二手」时芯片会从多变体塌缩成单变体
+  //（实测 18 个显卡芯片受影响），用户点芯片行不会展开，误以为功能坏了。
+  // 芯片行应始终反映该芯片的真实版本数，二手版本在展开后灰显标注。
+  let groupItems = items;
+  if (isGrouped(category) && !includeUsed) {
+    groupItems = queryList({ list, category, query, filters, sort, includeUsed: true }).items;
+  }
+
+  return { category, items, groupItems, total, matched, checkMap, list };
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -258,16 +267,28 @@ function render() {
     <div class="list-wrap">
       ${v.items.length === 0 && !s.ui.query && Object.keys(s.ui.filters).length === 0
         ? renderEmptyGuide()
-        : (s.ui.view === 'card'
-            ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
-            : (isGrouped(s.ui.category)
-                ? renderChipTable({
+        : (isGrouped(s.ui.category)
+            // 显卡/主板：按芯片归并（表格与卡片两种模式都归并，保证结构一致）
+            ? (s.ui.view === 'card'
+                ? renderChipCards({
                     category: s.ui.category,
-                    groups: groupByChipset(s.ui.category, v.items),
+                    groups: groupByChipset(s.ui.category, v.groupItems),
                     checkCandidate: (r) => v.checkMap.get(r.id),
                     isSelected: (r) => isSelected(r),
                     expandedKey: s.ui.expandedChip || null,
+                    includeUsed: s.ui.includeUsed,
                   })
+                : renderChipTable({
+                    category: s.ui.category,
+                    groups: groupByChipset(s.ui.category, v.groupItems),
+                    checkCandidate: (r) => v.checkMap.get(r.id),
+                    isSelected: (r) => isSelected(r),
+                    expandedKey: s.ui.expandedChip || null,
+                    includeUsed: s.ui.includeUsed,
+                  }))
+            // 其它品类：按行/卡片平铺
+            : (s.ui.view === 'card'
+                ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
                 : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare })))}
     </div>
     ${showDetail ? `
@@ -330,7 +351,9 @@ function bindEvents() {
   const root = document.getElementById('app');
 
   root.addEventListener('click', (e) => {
-    const t = e.target.closest('button, [data-category]');
+    // 选择器要覆盖芯片行本身（tr[data-chip-toggle]），
+    // 这样点芯片行的任意位置都能展开，而不必精确点到名称按钮
+    const t = e.target.closest('button, [data-category], [data-chip-toggle], [data-chip]');
     if (!t) return;
 
     // 品类切换
@@ -342,10 +365,14 @@ function bindEvents() {
     // 芯片行：多版本则展开/收起，单版本直接选中
     if (t.dataset.chipToggle || t.dataset.chip) {
       const key = t.dataset.chipToggle || t.dataset.chip;
-      // 注意：这里必须用 store.state，不能用 render() 里的局部变量 s
-      // （事件处理器在 bindEvents 闭包中，拿不到 render 的局部作用域）
-      const cat = store.state.ui.category;
-      const groups = groupByChipset(cat, visibleList(indexAll(), derive().resolved).items);
+      // 注意两点：
+      //   1. 必须用 store.state，不能用 render() 里的局部变量 s
+      //      （事件处理器在 bindEvents 闭包中，拿不到 render 的局部作用域）
+      //   2. 必须用 groupItems（绕过「含二手」的归并用列表），与渲染口径一致。
+      //      若用 items，关闭「含二手」时芯片会被算成单变体 → 点击只选中不展开，
+      //      表现为"芯片行点不开"（用户反馈的问题 1）。
+      const vl = visibleList(indexAll(), derive().resolved);
+      const groups = groupByChipset(store.state.ui.category, vl.groupItems);
       const g = groups.find((x) => x.key === key);
 
       if (!g) return;
@@ -564,7 +591,9 @@ function bindEvents() {
   // 单击行显示详情
   root.addEventListener('click', (e) => {
     const row = e.target.closest('.hw-row, .hw-card');
-    if (!row) return;
+    // 必须有 data-id 才处理：芯片行（tr[data-chip-toggle]）没有 id，
+    // 若不加这道判断会把 undefined 写进 selectedDetail
+    if (!row || !row.dataset.id) return;
     if (e.target.closest('button, input')) return; // 按钮/勾选框已单独处理
     store.setDetail(row.dataset.id);
   });

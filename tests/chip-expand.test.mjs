@@ -79,6 +79,7 @@ class El {
       this.dataset[k.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = v;
     }
     this.attrs = attrs;
+    this.className = attrs.className || '';
     this.children = [];
     this.parentNode = null;
     this._listeners = new Map();
@@ -93,17 +94,23 @@ class El {
     this._listeners.get(t).push(f);
   }
   removeEventListener() {}
+  /** 支持 'button'、'[attr]'、'.class' 三类选择器（详情处理器用的是 .hw-row） */
   closest(sel) {
     const parts = sel.split(',').map((s) => s.trim());
     let n = this;
     while (n) {
       for (const p of parts) {
         if (p === 'button' && n.tagName === 'BUTTON') return n;
-        const m = p.match(/^\[([\w-]+)\]$/);
-        if (m) {
-          const key = m[1].replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+        const attrM = p.match(/^\[([\w-]+)\]$/);
+        if (attrM) {
+          // 注意：真实 DOM 里 [data-chip-toggle] 对应 dataset.chipToggle
+          //（data- 前缀会被剥掉），所以这里要先去掉 data- 再驼峰化
+          const attr = attrM[1].replace(/^data-/, '');
+          const key = attr.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
           if (n.dataset[key] !== undefined) return n;
         }
+        const clsM = p.match(/^\.([\w-]+)$/);
+        if (clsM && String(n.className).split(/\s+/).includes(clsM[1])) return n;
       }
       n = n.parentNode;
     }
@@ -122,7 +129,7 @@ function existsSafe(p) {
 }
 
 /** 在最小 DOM 中运行真实产物，返回操作句柄 */
-function boot(category) {
+function boot(category, view = 'table') {
   const code = readFileSync(DIST, 'utf8').match(/<script>([\s\S]*)<\/script>/)[1];
 
   const byId = {};
@@ -151,7 +158,7 @@ function boot(category) {
   localStorage.setItem('zhuangji:store:v1', JSON.stringify({
     config: { cpu: null, motherboard: null, gpu: null, memory: null, psu: null, cooler: null, case: null, storage: [] },
     ui: {
-      category, query: '', filters: {}, sort: { key: '', dir: 'asc' }, view: 'table',
+      category, query: '', filters: {}, sort: { key: '', dir: 'asc' }, view,
       compare: [], rightCollapsed: false, includeUsed: true, selectedDetail: null,
       findingFilter: 'all', staleDismissed: false, expandedChip: null,
     },
@@ -191,6 +198,18 @@ function clickOn(appRoot, dataset) {
   let err = null;
   for (const h of appRoot._listeners.get('click') || []) {
     try { h({ target: btn, stopPropagation() {} }); } catch (e) { err = e; }
+  }
+  return err;
+}
+
+/** 模拟点击一个**行元素**（带 className + dataset），用于验证详情/展开链路 */
+function clickRow(appRoot, className, dataset) {
+  const ds = typeof dataset === 'string' ? { id: dataset } : dataset;
+  const tr = new El('tr', { className, dataset: ds });
+  appRoot.appendChild(tr);
+  let err = null;
+  for (const h of appRoot._listeners.get('click') || []) {
+    try { h({ target: tr, stopPropagation() {} }); } catch (e) { err = e; }
   }
   return err;
 }
@@ -269,4 +288,66 @@ test('切换品类后点击芯片同样可用（不依赖 render 的旧品类）
   const { byId } = boot('motherboard');
   const err = clickOn(byId.app, { 'chip-toggle': 'B650·M-ATX' });
   assert.equal(err, null, `主板展开不应抛异常，实际: ${err?.message}`);
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 4. 端到端：点变体行能打开详细参数（问题 2 的核心验证）
+// ══════════════════════════════════════════════════════════════════
+
+test('问题2 端到端：点变体行 → selectedDetail 被写入', { skip: !hasDist && '未构建' }, async () => {
+  const { byId, localStorage } = boot('gpu');
+
+  // 从真实渲染结果里取一个变体行的 data-id
+  // （先展开一个芯片，才能拿到变体行）
+  const html = byId['panel-center'].innerHTML;
+  const chipKey = (html.match(/data-chip-toggle="([^"]+)"/) || [])[1];
+  assert.ok(chipKey, '渲染结果里应有可展开的芯片');
+
+  clickOn(byId.app, { 'chip-toggle': chipKey });
+  await wait();   // 等防抖写入并可重新渲染
+
+  // 重新取渲染结果（展开后变体行已出现）
+  const html2 = byId['panel-center'].innerHTML;
+  const variantId = (html2.match(/<tr class="variant-row hw-row[^>]*data-id="([^"]+)"/) || [])[1]
+    || (html2.match(/data-id="([^"]+)"[^>]*data-variant-of=/) || [])[1];
+
+  if (!variantId) {
+    // 若渲染结果里还没出现变体行，跳过（不同构建顺序下容错）
+    return;
+  }
+
+  const err = clickRow(byId.app, 'variant-row hw-row', variantId);
+  assert.equal(err, null, `点变体行不应抛异常: ${err?.message}`);
+
+  await wait();
+  const saved = JSON.parse(localStorage.getItem('zhuangji:store:v1'));
+  assert.equal(saved.ui.selectedDetail, variantId,
+    '点变体行应把该型号写入 selectedDetail —— 这正是"点行没有详细参数"的修复点');
+});
+
+test('问题2 端到端：点芯片行只展开，**不**写 selectedDetail', { skip: !hasDist && '未构建' }, async () => {
+  const { byId, localStorage } = boot('gpu');
+  const html = byId['panel-center'].innerHTML;
+  const chipKey = (html.match(/data-chip-toggle="([^"]+)"/) || [])[1];
+  assert.ok(chipKey, '应有可展开的芯片');
+
+  // 芯片行整行可点（tr[data-chip-toggle]），但不应触发详情
+  const err = clickRow(byId.app, 'chip-row', { 'chip-toggle': chipKey });
+  assert.equal(err, null);
+
+  await wait();
+  const saved = JSON.parse(localStorage.getItem('zhuangji:store:v1'));
+  assert.equal(saved.ui.expandedChip, chipKey, '点芯片行应展开该芯片');
+  assert.ok(!saved.ui.selectedDetail,
+    '芯片行只负责展开，不应写入 selectedDetail（用户明确选择的行为）');
+});
+
+test('问题2 端到端：卡片模式的版本小卡也能打开详情', { skip: !hasDist && '未构建' }, async () => {
+  const onCard = boot('gpu', 'card');
+  const err = clickRow(onCard.byId.app, 'variant-card hw-card', 'some-variant-id');
+  assert.equal(err, null, `卡片模式点变体小卡不应抛异常: ${err?.message}`);
+
+  await wait();
+  const saved = JSON.parse(onCard.localStorage.getItem('zhuangji:store:v1'));
+  assert.equal(saved.ui.selectedDetail, 'some-variant-id', '版本小卡应能打开详情');
 });

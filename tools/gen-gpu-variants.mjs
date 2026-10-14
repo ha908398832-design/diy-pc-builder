@@ -223,7 +223,10 @@ for (const [chip, ref] of chipRef) {
 
     const brand = p.brand;
     const model = stripBrand(p.name).replace(/\s+/g, ' ').trim();
-    const name = `${brand} ${chip}${model ? ' ' + model : ''}`.trim();
+    // 名称约定：**不含品牌前缀**，用「芯片 + 厂商型号」。
+    // 与现有数据一致（如原有记录 "RTX 2060 VENTUS XS 6G OC"、brand="微星"），
+    // 品牌由 brand 字段承载，界面单独渲染徽章，避免出现「微星 微星 RTX 2060」。
+    const name = `${chip}${model ? ' ' + model : ''}`.trim();
     if (existingNames.has(name.toLowerCase())) continue;
 
     const id = `gpu-${brand}-${chip}-${p.length}mm`.toLowerCase()

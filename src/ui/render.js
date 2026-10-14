@@ -482,7 +482,7 @@ function chipTableColumns(category) {
  * @param {string} [o.expandedKey]  当前展开的芯片 key
  */
 export function renderChipTable({
-  category, groups = [], checkCandidate, isSelected, expandedKey = null,
+  category, groups = [], checkCandidate, isSelected, expandedKey = null, includeUsed = true,
 }) {
   const isMb = category === 'motherboard';
   // 主板：芯片行标签已含板型（B650·M-ATX），不再单列"形态"，
@@ -544,6 +544,7 @@ export function renderChipTable({
 
     const row = `
       <tr class="chip-row${worst === 'ok' ? '' : ' is-conflict'}" data-level="${esc(worst)}"
+          ${g.count > 1 ? ` data-chip-toggle="${esc(g.key)}"` : ''}
           ${selectedVariant ? ' data-has-selected="1"' : ''}>
         <td class="pick"><input type="checkbox" disabled></td>
         ${chipCell}
@@ -580,14 +581,25 @@ export function renderChipTable({
            <td class="num"></td>
            <td class="num"></td>`;
 
+      // 二手/矿卡在「含二手」关闭时仍会出现在这里（芯片行按全部版本计数），
+      // 因此需要灰显 + 标注，让用户一眼看出它不在当前筛选范围内
+      const isUsed = !!r.condition && r.condition !== 'new';
+      const dimmed = isUsed && !includeUsed;
+      // 品牌徽章按需显示：各品类 name 约定不同 ——
+      // 显卡的 name 不含品牌（如 "GTX 1660 SUPER Pegasus"），
+      // 主板的 name 含品牌（如 "微星 MAG B650M MORTAR WIFI"）。
+      // 名称已以品牌开头时不再重复渲染，避免"微星 微星 MAG…"。
+      const showBrand = r.brand && !String(r.name).startsWith(r.brand);
+
       return `
-        <tr class="variant-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}"
+        <tr class="variant-row hw-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}${dimmed ? ' is-dimmed' : ''}"
+            data-id="${esc(r.id)}"
             data-level="${esc(ck.level)}" data-variant-of="${esc(g.key)}">
           <td class="pick"></td>
           <td class="main">
-            <span class="variant-brand">${esc(r.brand || '')}</span>
-            ${esc(r.name)}
+            ${showBrand ? `<span class="variant-brand">${esc(r.brand)}</span>` : ''}${esc(r.name)}
             ${cond ? `<span class="badge badge-cond">${esc(cond)}</span>` : ''}
+            ${dimmed ? '<span class="badge badge-plain" title="当前未勾选「含二手」，此版本不在筛选范围内">筛选外</span>' : ''}
             ${r.custom ? '<span class="badge badge-custom">自定义</span>' : ''}
             ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '存在兼容问题')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
           </td>
@@ -683,6 +695,111 @@ export function renderTable({ category, items = [], checkCandidate, isSelected, 
 }
 
 /** 渲染卡片视图 */
+/**
+ * 芯片组卡片（PRD 3.1.2b · 卡片模式）
+ *
+ * 与 renderChipTable 结构一致：一张卡 = 一个芯片，
+ * 点卡片展开该芯片下各品牌的版本小卡，点小卡显示详情。
+ *
+ * 卡片模式**必须同样归并** —— 否则表格模式按芯片分组、
+ * 卡片模式却是每个型号一张卡，两种视图对不上（用户反馈问题 3）。
+ *
+ * @param {object} o
+ * @param {string} o.category
+ * @param {Array}  o.groups        groupByChipset 输出
+ * @param {function} o.checkCandidate (rec) => { level, findings }
+ * @param {function} o.isSelected     (rec) => boolean
+ * @param {string} [o.expandedKey]  当前展开的芯片
+ * @param {boolean}[o.includeUsed]  是否含二手（false 时二手版本灰显）
+ */
+export function renderChipCards({
+  category, groups = [], checkCandidate, isSelected, expandedKey = null, includeUsed = true,
+}) {
+  if (groups.length === 0) {
+    return '<div class="empty-hint">没有匹配的型号。</div>';
+  }
+  const isMb = category === 'motherboard';
+
+  return `<div class="card-grid">${groups.map((g) => {
+    const expanded = expandedKey === g.key;
+    const selectedVariant = g.records.find((r) => isSelected?.(r)) || null;
+
+    // 芯片卡片的兼容状态：任一变体有错即标记
+    const checks = g.records.map((r) => checkCandidate?.(r) || { level: 'ok' });
+    const order = { ok: 0, info: 1, warn: 2, error: 3 };
+    const worst = checks.reduce((acc, c) => ((order[c.level] || 0) > (order[acc] || 0) ? c.level : acc), 'ok');
+
+    const sizeApprox = g.records.some((r) => Array.isArray(r.estimated) && r.estimated.includes('length_mm'));
+    const approxMark = sizeApprox ? '<span class="approx" title="尺寸为估算值，请以实物规格为准">≈</span>' : '';
+
+    const tags = g.variants
+      .map((v) => `<span class="vtag vtag-${esc(v)}">${esc(v)}</span>`)
+      .join('');
+
+    // 芯片级规格：主板看插槽/内存，显卡看显存/尺寸区间/功耗
+    const specs = isMb
+      ? [['插槽', g.socket || '—'], ['内存', g.memoryType || '—'], ['M.2', nz(g.rep?.m2Slots)]]
+      : [
+        ['显存', g.rep?.vram ? `${g.rep.vram}GB` : '—'],
+        ['长度', `${approxMark}${formatRange(g.lengthRange, 'mm')}`],
+        ['厚度', formatRange(g.thicknessRange, '槽')],
+        ['功耗', g.rep?.tdp ? `${g.rep.tdp}W` : '—'],
+      ];
+
+    const specHtml = specs
+      .map(([k, v]) => `<div class="spec"><span>${esc(k)}</span><b>${v}</b></div>`)
+      .join('');
+
+    // 展开后的版本小卡
+    const variantCards = expanded ? g.records.map((r) => {
+      const sel = isSelected?.(r);
+      const ck = checkCandidate?.(r) || { level: 'ok' };
+      const conflict = ck.level === 'error' || ck.level === 'warn';
+      const isUsed = !!r.condition && r.condition !== 'new';
+      const dimmed = isUsed && !includeUsed;
+      const cond = conditionLabel(r.condition);
+      // 同表格：名称已含品牌时不重复渲染徽章
+      const showBrand = r.brand && !String(r.name).startsWith(r.brand);
+      const rApprox = Array.isArray(r.estimated) && r.estimated.includes('length_mm') ? '≈' : '';
+      const spec = isMb
+        ? `${esc(r.formFactor || '')}`
+        : `${rApprox}${esc(r.length_mm ?? '—')}mm · ${esc(r.thicknessSlots ?? '—')}槽`;
+
+      return `
+        <div class="variant-card hw-card${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}${dimmed ? ' is-dimmed' : ''}"
+             data-id="${esc(r.id)}" data-level="${esc(ck.level)}">
+          <div class="card-title">
+            ${showBrand ? `<span class="variant-brand">${esc(r.brand)}</span>` : ''}${esc(r.name)}
+            ${cond ? `<span class="badge badge-cond">${esc(cond)}</span>` : ''}
+            ${dimmed ? '<span class="badge badge-plain">筛选外</span>' : ''}
+            ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
+          </div>
+          <div class="variant-card-spec">${spec}</div>
+          <button type="button" class="btn-pick" data-pick="${esc(r.id)}">${sel ? '已选' : '选它'}</button>
+        </div>`;
+    }).join('') : '';
+
+    return `
+      <div class="chip-card${expanded ? ' is-expanded' : ''}${worst === 'ok' ? '' : ' is-conflict'}"
+           data-level="${esc(worst)}"${selectedVariant ? ' data-has-selected="1"' : ''}>
+        <div class="chip-card-head">
+          <button type="button" class="chip-name" data-chip="${esc(g.key)}"
+                  title="${g.count > 1 ? `点击展开 ${g.count} 个品牌的具体版本` : '点击选中'}">
+            ${esc(g.label)}<span class="chip-caret">${g.count > 1 ? (expanded ? '▾' : '▸') : ''}</span>
+          </button>
+          <span class="chip-count">${g.count} 个版本</span>
+        </div>
+        <div class="chip-variants">${tags}</div>
+        <div class="card-specs">${specHtml}</div>
+        ${selectedVariant ? `<div class="chip-card-sel">已选：${esc(selectedVariant.brand || selectedVariant.name.slice(0, 14))}${selectedVariant.length_mm ? ` ${selectedVariant.length_mm}mm` : ''}</div>` : ''}
+        ${g.count > 1
+          ? `<button type="button" class="btn-pick chip-expand-btn" data-chip-toggle="${esc(g.key)}">${expanded ? '收起' : `展开 ${g.count} 个版本`}</button>`
+          : `<button type="button" class="btn-pick" data-pick="${esc(g.records[0].id)}">选它</button>`}
+        ${expanded ? `<div class="variant-grid">${variantCards}</div>` : ''}
+      </div>`;
+  }).join('')}</div>`;
+}
+
 export function renderCards({ category, items = [], checkCandidate, isSelected }) {
   if (items.length === 0) {
     return '<div class="empty-hint">没有匹配的型号。</div>';
