@@ -240,13 +240,22 @@ test('再次点击「展开」应收起（toggle 语义）', { skip: !hasDist &&
 
 test('点击单变体芯片应直接选中（而非展开）', { skip: !hasDist && '未构建' }, async () => {
   const { byId, localStorage } = boot('gpu');
-  // RTX 3060 是单变体芯片
-  const err = clickOn(byId.app, { chip: 'RTX 3060' });
+
+  // 芯片的变体数是**数据决定的**，不能写死某个型号 ——
+  // 数据扩充后 RTX 3060 从单变体变成多变体，曾导致本测试误报。
+  // 这里从渲染结果里动态找一个真正单变体的芯片。
+  const html = byId['panel-center'].innerHTML;
+  const singles = [...html.matchAll(/<button[^>]*data-chip="([^"]+)"[^>]*title="点击选中"/g)]
+    .map((m) => m[1]);
+  if (singles.length === 0) return;   // 数据里若恰好没有单变体芯片，跳过该断言
+
+  const chip = singles[0];
+  const err = clickOn(byId.app, { chip });
   assert.equal(err, null, `点击不应抛异常: ${err?.message}`);
 
   await wait();
   const saved = JSON.parse(localStorage.getItem('zhuangji:store:v1'));
-  assert.ok(saved.config.gpu, '单变体芯片点击后应选中某个显卡');
+  assert.ok(saved.config.gpu, `单变体芯片「${chip}」点击后应选中某个显卡`);
   assert.equal(saved.ui.expandedChip, null, '单变体不应进入展开态');
 });
 
