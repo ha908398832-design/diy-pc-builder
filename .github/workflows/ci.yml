@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一分支上的新推送取消尚未完成的旧运行，避免排队堆积
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # 主线：完整门禁
+  #
+  # 刻意**没有** npm install / pnpm install 步骤——本项目零依赖，
+  # 只需要一个 Node 和一个 checkout。如果哪天有人引入了依赖，
+  # 这个 workflow 会立刻失败，从而起到守门作用。
+  # ──────────────────────────────────────────────────────────────
+  gate:
+    name: 门禁（Node ${{ matrix.node }}）
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22 = 当前 LTS；24 = 下一档。两边都跑，是因为
+        # `node --test` 的输出格式在版本间变过（Node 24 用 `ℹ pass N`，
+        # Node 22 用 `# pass N`），门禁的计数解析曾经因此静默失效。
+        # 同时跑两档，可以把这类「只在某个 Node 上出错」的问题挡在门外。
+        node: ['22', '24']
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # 门禁依次执行 8 步：
+      #   1. gen-schema           从 schema/fields.js 生成 JSON Schema
+      #   2. gen-csv-templates    生成 CSV 导入模板
+      #   3. gen-data-bundle      把 data/*.json 内联成 src/data/bundle.js
+      #   4. validate-data        校验硬件数据的字段、类型、枚举与取值范围
+      #   5. build                打包出单文件 dist/装机助手.html
+      #   6. check-reproducible   逐字节确认产物可由源码重新生成
+      #   7. check-no-price       确认全项目不含价格字段（A15 硬约束）
+      #   8. node --test tests/   全量单元测试
+      - name: 运行门禁
+        run: node tools/gate.mjs
+
+      # 构建产物本身就是要交付给用户的东西，失败时也应当能看到
+      - name: 门禁失败时上传诊断信息
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-failure-node${{ matrix.node }}
+          path: |
+            dist/
+            schema/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  # ──────────────────────────────────────────────────────────────
+  # 合规承诺的持续验证
+  #
+  # NOTICE.md 向使用者承诺：「运行 tools/strip-third-party.mjs 一键移除
+  # 第三方派生数据后，项目仍能构建并通过全部测试」。
+  # 这是一条会被时间悄悄侵蚀的承诺——数据一改、minCount 一调，它就可能失效。
+  # 所以这里每次提交都真实执行一遍，而不是只在发布时手工验一次。
+  # ──────────────────────────────────────────────────────────────
+  strip-third-party:
+    name: 第三方数据剥离路径仍可用
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: 移除第三方派生数据
+        run: node tools/strip-third-party.mjs
+
+      - name: 移除后仍须通过门禁
+        run: node tools/gate.mjs

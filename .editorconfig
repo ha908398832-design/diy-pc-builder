@@ -1,0 +1,55 @@
+# EditorConfig —— 让不同编辑器对同一份源码写出一致的字节序列
+#
+# 官网：https://editorconfig.org
+# 支持情况：JetBrains 全系 / Vim / Sublime / Emacs 原生支持；VS Code 需安装
+#          「EditorConfig for VS Code」扩展。
+#
+# 为什么本项目需要它：
+#   tools/check-reproducible.mjs 会把「磁盘上现有的文件」与「脚本重新生成的文件」
+#   做逐字节比对。只要编辑器擅自改动缩进、行尾或末尾换行，门禁就会失败——
+#   而失败信息看起来像是「构建不可复现」，排查起来很费时间。
+#
+# 注意：行尾（end_of_line）的最终裁定权在 .gitattributes，本文件只是让编辑器
+#      不要在与 git 无关的场合搞出第三种写法。
+
+root = true
+
+# ────────────────────────────────────────────────────────────────
+# 默认：适用于绝大多数源码与文档
+# ────────────────────────────────────────────────────────────────
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# ────────────────────────────────────────────────────────────────
+# 生成物：内容由 tools/ 下的脚本决定，编辑器不要试图「整理」它们
+#
+# 这几个文件都带有生成器产出的精确字节序列，且被 check-reproducible 严格比对。
+# 关掉去尾空格，是为了防止编辑器「顺手清理」掉生成器有意留下的空白。
+# ────────────────────────────────────────────────────────────────
+[dist/*.html]
+trim_trailing_whitespace = false
+
+[src/data/bundle.js]
+trim_trailing_whitespace = false
+
+[schema/hardware.schema.json]
+trim_trailing_whitespace = false
+
+# ────────────────────────────────────────────────────────────────
+# CSV 模板：必须与 Excel 兼容
+#
+# .gitattributes 已把 csv-templates/*.csv 标记为 -text（git 不做行尾转换），
+# 因为 Excel 在 Windows 上正确识别 UTF-8 需要 BOM，换行也需要 CRLF。
+# 这里同步声明，避免编辑器保存时把 CRLF 改成 LF。
+# ────────────────────────────────────────────────────────────────
+[csv-templates/*.csv]
+end_of_line = crlf
+
+# ────────────────────────────────────────────────────────────────
+# Markdown：行尾两个空格 = 硬换行，是有语义的，不能删
+# ────────────────────────────────────────────────────────────────
+[*.md]
+trim_trailing_whitespace = false

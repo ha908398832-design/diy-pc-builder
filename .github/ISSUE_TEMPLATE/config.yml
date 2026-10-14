@@ -1,0 +1,21 @@
+# 这是「新建 Issue」页面的模板选择器配置。
+# 文档：https://docs.github.com/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+
+# 保留「空白 Issue」入口。
+# 三个模板（缺陷报告 / 数据纠错 / 功能建议）覆盖了绝大多数情况，GitHub 也会把它们
+# 显示在最前面；但总会有「我想问个问题」这类落不进模板的需求，
+# 与其逼着用户把问题硬塞进「功能建议」，不如留一个正经的出口。
+blank_issues_enabled: true
+
+contact_links:
+  - name: 📖 先读 README —— 怎么用、支持什么、数据从哪来
+    url: https://github.com/ha908398832-design/diy-pc-builder/blob/main/README.md
+    about: 单文件怎么打开、浏览器要求、芯片级归并是什么意思、有哪些已知限制。
+
+  - name: 📋 第三方数据说明（NOTICE.md）—— 提数据问题前请先看这里
+    url: https://github.com/ha908398832-design/diy-pc-builder/blob/main/NOTICE.md
+    about: 哪些字段是手工核对的、哪些是从第三方数据集派生的、以及如何一键移除这些派生数据。
+
+  - name: 🔒 报告安全问题 —— 请勿在公开 Issue 中披露细节
+    url: https://github.com/ha908398832-design/diy-pc-builder/blob/main/SECURITY.md
+    about: 私密报告渠道、在范围内的漏洞类型、响应时间预期，都写在 SECURITY.md 里。
