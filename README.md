@@ -57,9 +57,37 @@
 
 ## 快速开始
 
-### 直接用
+### 普通用户：三种方式，任选其一
 
-双击 `dist/装机助手.html`。就这一步。
+**① 下载 Release 附件**（最省事）
+
+1. 打开 [Releases 页面](https://github.com/ha908398832-design/diy-pc-builder/releases/latest)
+2. 在 **Assets** 区点 `装机助手.html` —— 浏览器会直接开始下载
+3. **双击**下载好的文件，用浏览器打开即用
+
+**② 在线直接用**（连下载都省了）
+
+> <https://ha908398832-design.github.io/diy-pc-builder/>
+
+**③ 下载整个仓库**
+
+[下载 main 分支 ZIP](https://github.com/ha908398832-design/diy-pc-builder/archive/refs/heads/main.zip)，
+解压后双击 `dist/装机助手.html`。
+
+> **⚠️ 别用 GitHub 的 "Raw" / "Download raw file" 链接来「打开」它**
+>
+> GitHub 对 `.html` 一律以 `Content-Type: text/plain` 返回（防止别人仓库里的 HTML
+> 在 `githubusercontent.com` 域下执行脚本），所以浏览器会把它当**纯文本**显示 ——
+> 你会看到满屏源代码，而不是界面。这不是文件坏了。
+>
+> 真要单独下载这一个文件：**右键**链接选「链接另存为」，或者直接用 ① 的 Release 附件。
+
+以上三种方式拿到的都是**同一个单文件**，它：
+
+- 不需要安装任何东西
+- 不需要联网（打开后全程本地运行，无外部请求）
+- 不收集任何数据
+- 可以随便拷给别人、丢进 U 盘
 
 ### 从源码构建
 

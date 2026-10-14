@@ -1,0 +1,63 @@
+name: 部署在线版
+
+# 把 dist 里的单文件产物发布成可直接访问的网页。
+# 产物本身与 Release 附件、仓库 ZIP 里的完全一致（同一次构建、同一份文件）。
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Pages 部署需要这三个权限，其中 id-token 用于 OIDC 校验部署来源。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只跑一个部署；新的推送取消排队中的旧部署，但让进行中的跑完。
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: 构建站点
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      # 零依赖，无需 npm install。
+      # src/data/bundle.js 与 dist/装机助手.html 都已纳入版本控制，
+      # 这里重新构建一次，确保发布出去的一定是从当前源码现场生成的。
+      - name: 构建单文件产物
+        run: node tools/build.mjs
+
+      - name: 组装站点
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          # 用通配符避免在 shell 里输入中文文件名（不同 locale 下更稳）
+          cp dist/*.html _site/index.html
+          ls -l _site
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    name: 发布
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 部署到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
