@@ -440,16 +440,37 @@ test('产物冒烟：脚本不含外部网络请求（NF1 离线可用）', { sk
   }
 });
 
+/**
+ * 从产物里读出被内联的模块 id 列表
+ * 打包器为每个模块生成一条 `__defs["<id>"] = function(__deps){`
+ */
+function inlinedModules(code) {
+  return [...code.matchAll(/__defs\["([^"]+)"\]/g)].map((m) => m[1]);
+}
+
 test('产物冒烟：数据与关键功能模块都已内联', { skip: !hasDist && '未构建' }, () => {
   const code = extractScript();
   const html = readFileSync(DIST, 'utf8');
-  // 13 个模块定义
-  const defCount = (code.match(/__defs\["/g) || []).length;
-  assert.equal(defCount, 13, `应内联 13 个模块，实际 ${defCount}`);
-  // 关键模块存在
-  for (const mod of ['src/core/rules.js', 'src/core/power.js', 'src/core/search.js', 'src/ui/export.js', 'src/data/bundle.js']) {
-    assert.ok(code.includes(`__defs["${mod}"]`), `应内联模块 ${mod}`);
-  }
+  const mods = inlinedModules(code);
+  const defCount = mods.length;
+
+  // 数量下限：新模块加入后旧的硬编码数字会失效，故只做下限约束，
+  // 具体模块是否齐全由下面的关键模块清单保证
+  assert.ok(defCount >= 13, `应至少内联 13 个模块，实际 ${defCount}`);
+
+  // 关键模块必须全部内联
+  const required = [
+    'src/core/enums.js', 'src/core/rules-data.js', 'src/core/rules.js',
+    'src/core/power.js', 'src/core/status.js', 'src/core/search.js',
+    'src/core/store.js', 'src/core/csv.js', 'src/core/grouping.js',
+    'src/data/bundle.js', 'src/ui/render.js', 'src/ui/export.js', 'src/ui/app.js',
+  ];
+  const missing = required.filter((m) => !mods.includes(m));
+  assert.deepEqual(missing, [], `以下模块未内联: ${missing.join(', ')}`);
+
+  // 数据必须内联且非空
+  assert.ok(code.includes('__defs["src/data/bundle.js"]'), '数据包应内联');
+  assert.ok(mods.includes('src/core/grouping.js'), '芯片归并模块应内联（PRD 3.1.2b）');
   // CSS 已内联
   assert.ok(html.includes('<style>'), 'CSS 应内联');
   assert.ok(html.includes('--left-w'), 'CSS 变量应存在');

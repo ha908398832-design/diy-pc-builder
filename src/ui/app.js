@@ -18,8 +18,9 @@ import {
   renderLeftPanel, renderToolbar, renderTable, renderCards, renderDetail,
   renderCompare, renderCompatPanel, renderPowerPanel, renderTopBar,
   renderRulesHelp, renderEmptyGuide, renderSchemeManager, renderStaleBanner,
-  renderOverview, TABLE_COLUMNS,
+  renderOverview, renderChipTable, TABLE_COLUMNS,
 } from './render.js';
+import { groupByChipset, isGrouped, isSingleVariant } from '../core/grouping.js';
 
 // ══════════════════════════════════════════════════════════════════
 // 库：内置数据 + 自定义数据 合并
@@ -258,7 +259,15 @@ function render() {
         ? renderEmptyGuide()
         : (s.ui.view === 'card'
             ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
-            : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare }))}
+            : (isGrouped(s.ui.category)
+                ? renderChipTable({
+                    category: s.ui.category,
+                    groups: groupByChipset(s.ui.category, v.items),
+                    checkCandidate: (r) => v.checkMap.get(r.id),
+                    isSelected: (r) => isSelected(r),
+                    expandedKey: s.ui.expandedChip || null,
+                  })
+                : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare })))}
     </div>
     ${showDetail ? `
     <div class="detail-zone" id="detail-zone">
@@ -326,6 +335,26 @@ function bindEvents() {
     // 品类切换
     if (t.dataset.category) {
       store.setCategory(t.dataset.category);
+      return;
+    }
+
+    // 芯片行：多版本则展开/收起，单版本直接选中
+    if (t.dataset.chipToggle || t.dataset.chip) {
+      const key = t.dataset.chipToggle || t.dataset.chip;
+      const groups = groupByChipset(s.ui.category, visibleList(indexAll(), derive().resolved).items);
+      const g = groups.find((x) => x.key === key);
+
+      if (!g) return;
+      // 单版本芯片：点击直接选中，省一次点击
+      if (isSingleVariant(g)) {
+        const rec = g.records[0];
+        if (isSelected(rec)) store.deselect(rec.category, rec.id);
+        else store.select(rec.category, rec.id);
+        return;
+      }
+      store.update((st) => {
+        st.ui.expandedChip = st.ui.expandedChip === key ? null : key;
+      }, 'toggle-chip');
       return;
     }
 

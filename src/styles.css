@@ -549,6 +549,106 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .meta-tip { color: var(--fg-3); }
 
 /* ══════════════════════════════════════════════════════════════
+   芯片组表格（PRD 3.1.2b）
+   归并只发生在展示层：芯片行显示形态与尺寸区间，
+   变体行保留真实尺寸（兼容计算依赖它）
+   ══════════════════════════════════════════════════════════════ */
+.chip-table .chip-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.chip-table .chip-name:hover { color: var(--accent); }
+.chip-caret { font-size: 9px; color: var(--fg-4); }
+.chip-count {
+  font-size: 10px;
+  color: var(--fg-4);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 形态标签 */
+.chip-variants { white-space: nowrap; }
+.vtag {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.vtag-ITX, .vtag-单风扇 {
+  color: var(--ok);
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+}
+.vtag-长卡 {
+  color: var(--warn);
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+.vtag-矿卡 {
+  color: var(--info);
+  border-color: var(--info-border);
+  background: var(--info-bg);
+}
+.vtag-标准, .vtag-单槽薄 {
+  color: var(--fg-3);
+  border-color: var(--border);
+}
+
+/* 估算值标记：尺寸来自知识库而非实测时显示 ≈ */
+.approx {
+  color: var(--warn);
+  font-size: 11px;
+  margin-right: 1px;
+  cursor: help;
+}
+
+/* 变体行：缩进 + 左侧引导线，视觉上归属于上方芯片行 */
+.hw-table tr.variant-row {
+  background: var(--raised);
+  border-left: 2px solid var(--border-strong);
+}
+.hw-table tr.variant-row:hover { background: var(--hover); }
+.hw-table tr.variant-row.is-selected { background: var(--accent-bg); }
+.hw-table tr.variant-row.is-conflict { border-left-color: var(--error); }
+
+.variant-brand {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--fg-3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-right: 7px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.variant-specs {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.variant-specs span { margin-right: 8px; }
+
+/* 芯片行已选中变体时的轻微高亮 */
+.hw-table tr.chip-row[data-has-selected="1"] .chip-name { color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════════════
    表格
    ══════════════════════════════════════════════════════════════ */
 .list-wrap { flex: 1 1 auto; overflow: auto; min-height: 120px; }

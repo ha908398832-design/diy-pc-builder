@@ -36,6 +36,7 @@ export function defaultState() {
       rightCollapsed: false,
       includeUsed: false,
       selectedDetail: null, // 当前详情区展示的记录 id
+      expandedChip: null,   // 当前展开的芯片 key（显卡/主板归并视图）
       findingFilter: 'all',
       staleDismissed: false, // 是否忽略「失效引用」提示
     },
@@ -235,6 +236,7 @@ export class Store {
       s.ui.category = category;
       s.ui.selectedDetail = null;
       s.ui.compare = [];
+      s.ui.expandedChip = null;   // 换品类时收起展开的芯片
     }, 'category');
   }
 

@@ -556,6 +556,106 @@ input[type="checkbox"] { accent-color: var(--accent); }
 .meta-tip { color: var(--fg-3); }
 
 /* ══════════════════════════════════════════════════════════════
+   芯片组表格（PRD 3.1.2b）
+   归并只发生在展示层：芯片行显示形态与尺寸区间，
+   变体行保留真实尺寸（兼容计算依赖它）
+   ══════════════════════════════════════════════════════════════ */
+.chip-table .chip-name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.chip-table .chip-name:hover { color: var(--accent); }
+.chip-caret { font-size: 9px; color: var(--fg-4); }
+.chip-count {
+  font-size: 10px;
+  color: var(--fg-4);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 7px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 形态标签 */
+.chip-variants { white-space: nowrap; }
+.vtag {
+  display: inline-block;
+  font-size: 10px;
+  line-height: 1.6;
+  padding: 1px 5px;
+  border-radius: 3px;
+  margin-right: 4px;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+.vtag-ITX, .vtag-单风扇 {
+  color: var(--ok);
+  border-color: var(--ok-border);
+  background: var(--ok-bg);
+}
+.vtag-长卡 {
+  color: var(--warn);
+  border-color: var(--warn-border);
+  background: var(--warn-bg);
+}
+.vtag-矿卡 {
+  color: var(--info);
+  border-color: var(--info-border);
+  background: var(--info-bg);
+}
+.vtag-标准, .vtag-单槽薄 {
+  color: var(--fg-3);
+  border-color: var(--border);
+}
+
+/* 估算值标记：尺寸来自知识库而非实测时显示 ≈ */
+.approx {
+  color: var(--warn);
+  font-size: 11px;
+  margin-right: 1px;
+  cursor: help;
+}
+
+/* 变体行：缩进 + 左侧引导线，视觉上归属于上方芯片行 */
+.hw-table tr.variant-row {
+  background: var(--raised);
+  border-left: 2px solid var(--border-strong);
+}
+.hw-table tr.variant-row:hover { background: var(--hover); }
+.hw-table tr.variant-row.is-selected { background: var(--accent-bg); }
+.hw-table tr.variant-row.is-conflict { border-left-color: var(--error); }
+
+.variant-brand {
+  display: inline-block;
+  font-size: 10px;
+  color: var(--fg-3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-right: 7px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.variant-specs {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+.variant-specs span { margin-right: 8px; }
+
+/* 芯片行已选中变体时的轻微高亮 */
+.hw-table tr.chip-row[data-has-selected="1"] .chip-name { color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════════════
    表格
    ══════════════════════════════════════════════════════════════ */
 .list-wrap { flex: 1 1 auto; overflow: auto; min-height: 120px; }
@@ -1331,6 +1431,7 @@ function defaultState() {
       rightCollapsed: false,
       includeUsed: false,
       selectedDetail: null, // 当前详情区展示的记录 id
+      expandedChip: null,   // 当前展开的芯片 key（显卡/主板归并视图）
       findingFilter: 'all',
       staleDismissed: false, // 是否忽略「失效引用」提示
     },
@@ -1530,6 +1631,7 @@ class Store {
       s.ui.category = category;
       s.ui.selectedDetail = null;
       s.ui.compare = [];
+      s.ui.expandedChip = null;   // 换品类时收起展开的芯片
     }, 'category');
   }
 
@@ -4516,6 +4618,272 @@ function buildTemplateCsv(category) {
 
 return { "parseCsv": parseCsv, "extractFieldKey": extractFieldKey, "autoMapColumns": autoMapColumns, "convertValue": convertValue, "rowToRecord": rowToRecord, "validateRecord": validateRecord, "buildImportReport": buildImportReport, "mergeRecords": mergeRecords, "stripCustom": stripCustom, "buildTemplateCsv": buildTemplateCsv };
 };
+__defs["src/core/grouping.js"] = function(__deps){
+var CATEGORY_LABELS = __deps["src/core/enums.js"].CATEGORY_LABELS;
+/**
+ * 芯片级归并（PRD 3.1.2b）
+ *
+ * 显卡按 chipset、主板按 chipset 归并为「芯片行」，
+ * 点击芯片行可展开该芯片下各品牌的具体变体（含真实长度/厚度/供电）。
+ *
+ * 关键约束（务必保持）：
+ *   归并只发生在**展示层**。规则引擎仍按**具体型号**的尺寸计算 ——
+ *   因为同一芯片不同品牌的尺寸差异直接决定 E5(显卡限长) / E6(显卡厚度)
+ *   的判定结果（实测 GTX 1060 有 175mm ITX / 242mm 标准 / 290mm 长卡三种）。
+ *
+ * 本模块为纯函数，不接触 DOM，可在 Node 中直接单测。
+ */
+
+
+/** 支持芯片归并的品类 → 归并键字段 */
+const GROUPED_CATEGORIES = {
+  gpu: 'chipset',
+  motherboard: 'chipset',
+};
+
+/** 该品类是否启用芯片归并 */
+function isGrouped(category) {
+  return Object.hasOwn(GROUPED_CATEGORIES, category);
+}
+
+/** 取归并键（未启用归并的品类返回 null） */
+function groupKeyOf(category) {
+  return GROUPED_CATEGORIES[category] || null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 形态判定
+// ══════════════════════════════════════════════════════════════════
+
+/** 形态枚举（写入数据的 variant 字段时也用这些值） */
+const VARIANTS = ['ITX', '单风扇', '单槽薄', '标准', '长卡', '矿卡'];
+
+/**
+ * 由长度 + 厚度 + 成色推导形态标签
+ *
+ * 阈值说明（基于实测常见非公版尺寸）：
+ *   ≤180mm  → ITX/短卡（多数 ITX 卡 168~183mm）
+ *   ≤210mm  → 单风扇（紧凑机箱可选）
+ *   ≥320mm  → 长卡（需大机箱，常见于旗舰非公版）
+ *   厚度 ≤2 槽 → 单槽薄
+ *   condition = mining → 矿卡
+ *
+ * @param {object} rec  型号记录
+ * @returns {string[]} 形态标签数组
+ */
+function inferVariants(rec) {
+  const tags = [];
+  const len = rec.length_mm;
+  const thick = rec.thicknessSlots;
+
+  if (typeof len === 'number') {
+    if (len <= 180) tags.push('ITX');
+    else if (len <= 210) tags.push('单风扇');
+    if (len >= 320) tags.push('长卡');
+  }
+  if (typeof thick === 'number' && thick <= 2) tags.push('单槽薄');
+
+  if (rec.condition === 'mining') tags.push('矿卡');
+
+  // 没有长度信息时不能瞎猜，至少标注成色
+  if (tags.length === 0) tags.push('标准');
+  return tags;
+}
+
+/** 记录的实际形态：优先用 variant 字段，否则自动推导 */
+function variantsOf(rec) {
+  if (rec.variant) return [rec.variant];
+  return inferVariants(rec);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 区间计算
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * 求一组记录在某数值字段上的区间
+ *
+ * @returns {{min:number,max:number,exact:boolean}|null}
+ *   exact=true 表示组内该字段完全一致（min === max）
+ */
+function fieldRange(records, field) {
+  const vals = records
+    .map((r) => r[field])
+    .filter((v) => typeof v === 'number' && Number.isFinite(v));
+  if (vals.length === 0) return null;
+  const min = Math.min(...vals);
+  const max = Math.max(...vals);
+  return { min, max, exact: min === max };
+}
+
+/**
+ * 格式化区间为展示字符串
+ *
+ * @param {object|null} range fieldRange 结果
+ * @param {string} unit 单位后缀（如 'mm'）
+ * @returns {string}
+ */
+function formatRange(range, unit = '') {
+  if (!range) return '—';
+  const suffix = unit ? ` ${unit}` : '';
+  return range.exact
+    ? `${range.min}${suffix}`
+    : `${range.min}~${range.max}${suffix}`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 归并主函数
+// ══════════════════════════════════════════════════════════════════
+
+/**
+ * 把同品类的型号列表按芯片归并
+ *
+ * @param {string} category 品类（gpu / motherboard）
+ * @param {Array} items 该品类的型号记录
+ * @returns {Array} 芯片组数组，每项：
+ *   {
+ *     key,            // 归并键值，如 'GTX 1060'
+ *     chipset,        // 同 key
+ *     label,          // 展示用芯片名
+ *     records,        // 该芯片下所有变体（按长度升序）
+ *     rep,            // 代表记录（芯片级参数取自它）
+ *     count,          // 变体数量
+ *     lengthRange,    // 长度区间
+ *     thicknessRange, // 厚度区间
+ *     variants,       // 形态标签（组内并集，有序去重）
+ *     conditions,     // 组内出现的成色集合
+ *     // 以下为芯片级聚合值（取自 rep，兼容性计算不依赖它们）
+ *     vram, tdp, gameScore, productivityScore, powerConnectors
+ *   }
+ */
+function groupByChipset(category, items) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const key = groupKeyOf(category);
+  if (!key) {
+    // 未启用归并的品类：每条记录自成一组（保持统一调用方式）
+    return items.map((rec) => singleGroup(category, rec));
+  }
+
+  const map = new Map();
+  for (const rec of items) {
+    const k = (rec[key] ?? '').toString().trim();
+    // 归并键为空（数据缺字段）时退回用 id，保证不丢数据
+    const groupKey = k || `__solo__:${rec.id}`;
+    if (!map.has(groupKey)) map.set(groupKey, []);
+    map.get(groupKey).push(rec);
+  }
+
+  const groups = [];
+  for (const [k, recs] of map) {
+    if (k.startsWith('__solo__:')) {
+      groups.push(singleGroup(category, recs[0]));
+      continue;
+    }
+
+    // 变体按长度升序（小机箱用户优先看到短卡），长度缺失的排最后
+    const sorted = [...recs].sort((a, b) => {
+      const la = typeof a.length_mm === 'number' ? a.length_mm : Infinity;
+      const lb = typeof b.length_mm === 'number' ? b.length_mm : Infinity;
+      if (la !== lb) return la - lb;
+      // 长度相同则按成色：全新在前，便于推荐
+      const rank = (r) => (r.condition === 'new' ? 0 : 1);
+      return rank(a) - rank(b) || String(a.name).localeCompare(String(b.name));
+    });
+
+    // 代表记录：优先全新，其次第一条
+    const rep = sorted.find((r) => r.condition === 'new') || sorted[0];
+
+    // 形态标签并集，保持 VARIANTS 的声明顺序
+    const seen = new Set(sorted.flatMap(variantsOf));
+    const variants = VARIANTS.filter((v) => seen.has(v));
+
+    groups.push({
+      key: k,
+      chipset: k,
+      label: k,
+      records: sorted,
+      rep,
+      count: sorted.length,
+      lengthRange: fieldRange(sorted, 'length_mm'),
+      thicknessRange: fieldRange(sorted, 'thicknessSlots'),
+      variants,
+      conditions: [...new Set(sorted.map((r) => r.condition).filter(Boolean))],
+      vram: rep.vram,
+      tdp: rep.tdp,
+      gameScore: rep.gameScore,
+      productivityScore: rep.productivityScore,
+      // 供电接口：取组内最大值（最"挑"电源的那个变体）
+      pcie8pin: maxOf(sorted, 'pcie8pin'),
+      pcie12vhpwr: maxOf(sorted, 'pcie12vhpwr'),
+      category,
+    });
+  }
+
+  return groups;
+}
+
+/** 单条记录自成一组（用于未启用归并的品类，或归并键缺失时） */
+function singleGroup(category, rec) {
+  return {
+    key: rec.id,
+    chipset: null,
+    label: rec.name,
+    records: [rec],
+    rep: rec,
+    count: 1,
+    lengthRange: fieldRange([rec], 'length_mm'),
+    thicknessRange: fieldRange([rec], 'thicknessSlots'),
+    variants: variantsOf(rec),
+    conditions: rec.condition ? [rec.condition] : [],
+    vram: rec.vram,
+    tdp: rec.tdp,
+    gameScore: rec.gameScore,
+    productivityScore: rec.productivityScore,
+    pcie8pin: rec.pcie8pin,
+    pcie12vhpwr: rec.pcie12vhpwr,
+    category,
+  };
+}
+
+/** 取组内某数值字段的最大值（缺失按 0） */
+function maxOf(records, field) {
+  let m = 0;
+  for (const r of records) {
+    const v = r[field];
+    if (typeof v === 'number' && Number.isFinite(v) && v > m) m = v;
+  }
+  return m;
+}
+
+/**
+ * 判断某芯片组是否只有 1 个变体
+ * 单变体时点击芯片行应**直接选中**，不弹层（少一次点击）
+ */
+function isSingleVariant(group) {
+  return !group || group.count <= 1;
+}
+
+/**
+ * 芯片组的展示摘要（用于列表行副标题）
+ * 例：「175~290mm · 2~3.8槽 · 3 个版本」
+ */
+function groupSummary(group) {
+  if (!group) return '';
+  const parts = [];
+  const len = formatRange(group.lengthRange, 'mm');
+  if (len !== '—') parts.push(len);
+  const th = formatRange(group.thicknessRange, '槽');
+  if (th !== '—') parts.push(th);
+  if (group.count > 1) parts.push(`${group.count} 个版本`);
+  return parts.join(' · ');
+}
+
+/** 品类名（用于日志与提示文案） */
+function categoryLabel(category) {
+  return CATEGORY_LABELS[category] || category;
+}
+return { "GROUPED_CATEGORIES": GROUPED_CATEGORIES, "isGrouped": isGrouped, "groupKeyOf": groupKeyOf, "VARIANTS": VARIANTS, "inferVariants": inferVariants, "variantsOf": variantsOf, "fieldRange": fieldRange, "formatRange": formatRange, "groupByChipset": groupByChipset, "isSingleVariant": isSingleVariant, "groupSummary": groupSummary, "categoryLabel": categoryLabel };
+};
 __defs["src/ui/render.js"] = function(__deps){
 var CATEGORY_LABELS = __deps["src/core/enums.js"].CATEGORY_LABELS;
 var CATEGORY_ORDER = __deps["src/core/enums.js"].CATEGORY_ORDER;
@@ -4527,6 +4895,10 @@ var LEVEL_ICONS = __deps["src/core/enums.js"].LEVEL_ICONS;
 var FILTER_DEFS = __deps["src/core/search.js"].FILTER_DEFS;
 var SORT_DEFS = __deps["src/core/search.js"].SORT_DEFS;
 var conditionLabel = __deps["src/core/search.js"].conditionLabel;
+var groupByChipset = __deps["src/core/grouping.js"].groupByChipset;
+var isGrouped = __deps["src/core/grouping.js"].isGrouped;
+var formatRange = __deps["src/core/grouping.js"].formatRange;
+var isSingleVariant = __deps["src/core/grouping.js"].isSingleVariant;
 /**
  * 视图渲染（纯函数层）
  *
@@ -4536,6 +4908,7 @@ var conditionLabel = __deps["src/core/search.js"].conditionLabel;
  *
  * 安全：所有来自数据/CSV 导入的文本一律经 esc() 转义，防止 HTML 注入。
  */
+
 
 
 
@@ -4914,6 +5287,15 @@ function cellValue(rec, col) {
       return rec.baseClock ? `${rec.baseClock}-${rec.boostClock}` : '—';
     case '_igpu':
       return rec.igpu ? '有' : '无';
+    case 'powerConnectors': {
+      // 供电接口摘要：显卡变体行用，如「2×8pin」「1×12VHPWR」
+      const a = rec.pcie8pin || 0;
+      const b = rec.pcie12vhpwr || 0;
+      const parts = [];
+      if (a) parts.push(`${a}×8pin`);
+      if (b) parts.push(`${b}×12VHPWR`);
+      return parts.length ? parts.join(' + ') : '免外接';
+    }
     case '_formFactors':
       return Array.isArray(rec.formFactors) ? rec.formFactors.join(' ') : '—';
     case '_size':
@@ -4957,6 +5339,134 @@ function cellValue(rec, col) {
  * @param {function} o.isSelected     (rec) => boolean
  * @param {Array}  o.compareIds      勾选对比的记录 id
  */
+/**
+ * 芯片组表格（PRD 3.1.2b）
+ *
+ * 显卡 / 主板按 chipset 归并：一行一个芯片，显示形态标签与尺寸区间；
+ * 点击芯片行展开该芯片下各品牌的具体变体（含真实长度/厚度/供电）。
+ *
+ * 重要：归并只发生在展示层。规则引擎仍按**具体型号**的尺寸计算，
+ * 因此变体行必须带 data-pick，选中的是变体而非芯片。
+ *
+ * @param {object} o
+ * @param {string} o.category
+ * @param {Array} o.groups        groupByChipset 的输出
+ * @param {function} o.checkCandidate (rec) => { level, findings }
+ * @param {function} o.isSelected     (rec) => boolean
+ * @param {string} [o.expandedKey]  当前展开的芯片 key
+ */
+function renderChipTable({
+  category, groups = [], checkCandidate, isSelected, expandedKey = null,
+}) {
+  if (groups.length === 0) {
+    return `
+      <table class="hw-table chip-table">
+        <thead><tr>
+          <th class="pick"></th><th>芯片型号</th><th>形态</th>
+          <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
+          <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>
+        </tr></thead>
+      </table>
+      <div class="empty-hint">没有匹配的型号。试试清空搜索或关掉筛选。</div>`;
+  }
+
+  const head = `
+    <th class="pick"></th><th>芯片型号</th><th>形态</th>
+    <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
+    <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>`;
+
+  const rows = groups.map((g) => {
+    const expanded = expandedKey === g.key;
+    const selectedVariant = g.records.find((r) => isSelected?.(r)) || null;
+
+    // 芯片行的兼容状态：任一变体有错即视为该芯片存在冲突
+    const checks = g.records.map((r) => checkCandidate?.(r) || { level: 'ok' });
+    const worst = checks.reduce((acc, c) => {
+      const order = { ok: 0, info: 1, warn: 2, error: 3 };
+      return (order[c.level] || 0) > (order[acc] || 0) ? c.level : acc;
+    }, 'ok');
+
+    // 尺寸是否含估算值（有估算值则整体标 ≈）
+    const sizeApprox = g.records.some((r) => Array.isArray(r.estimated) && r.estimated.includes('length_mm'));
+    const approxMark = sizeApprox ? '<span class="approx" title="尺寸为估算值，请以实物规格为准">≈</span>' : '';
+
+    const variantTags = g.variants
+      .map((v) => `<span class="vtag vtag-${esc(v)}">${esc(v)}</span>`)
+      .join('');
+
+    const chipCell = `
+      <td class="main">
+        <button type="button" class="chip-name" data-chip="${esc(g.key)}"
+                title="${g.count > 1 ? `点击展开 ${g.count} 个品牌的具体版本` : '点击选中'}">
+          ${esc(g.label)}<span class="chip-caret">${g.count > 1 ? (expanded ? '▾' : '▸') : ''}</span>
+        </button>
+        ${g.count > 1 ? `<span class="chip-count">${g.count} 个版本</span>` : ''}
+        ${selectedVariant ? `<span class="badge">已选：${esc(selectedVariant.brand || selectedVariant.name.slice(0, 12))}</span>` : ''}
+      </td>`;
+
+    const row = `
+      <tr class="chip-row${worst === 'ok' ? '' : ' is-conflict'}" data-level="${esc(worst)}"
+          ${selectedVariant ? ' data-has-selected="1"' : ''}>
+        <td class="pick"><input type="checkbox" disabled></td>
+        ${chipCell}
+        <td class="chip-variants">${variantTags}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
+        <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
+        <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>
+        <td class="ops">
+          ${g.count > 1
+            ? `<button type="button" class="btn-pick" data-chip-toggle="${esc(g.key)}">展开</button>`
+            : `<button type="button" class="btn-pick" data-pick="${esc(g.records[0].id)}">选它</button>`}
+        </td>
+      </tr>`;
+
+    if (!expanded) return row;
+
+    // 变体明细行
+    const variantRows = g.records.map((r) => {
+      const sel = isSelected?.(r);
+      const ck = checkCandidate?.(r) || { level: 'ok' };
+      const conflict = ck.level === 'error' || ck.level === 'warn';
+      const rApprox = Array.isArray(r.estimated) && r.estimated.includes('length_mm') ? '≈' : '';
+      const cond = conditionLabel(r.condition);
+      return `
+        <tr class="variant-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}"
+            data-level="${esc(ck.level)}" data-variant-of="${esc(g.key)}">
+          <td class="pick"></td>
+          <td class="main">
+            <span class="variant-brand">${esc(r.brand || '')}</span>
+            ${esc(r.name)}
+            ${cond ? `<span class="badge badge-cond">${esc(cond)}</span>` : ''}
+            ${r.custom ? '<span class="badge badge-custom">自定义</span>' : ''}
+            ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '存在兼容问题')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
+          </td>
+          <td class="variant-specs">
+            <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
+            <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
+          </td>
+          <td class="num">${esc(r.vram ?? '—')}</td>
+          <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
+          <td class="num"></td>
+          <td class="num"></td>
+          <td class="num"></td>
+          <td class="ops">
+            <button type="button" class="btn-pick" data-pick="${esc(r.id)}">${sel ? '已选' : '选它'}</button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    return row + variantRows;
+  }).join('');
+
+  return `
+    <table class="hw-table chip-table">
+      <thead><tr>${head}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 function renderTable({ category, items = [], checkCandidate, isSelected, compareIds = [] }) {
   const cols = TABLE_COLUMNS[category] || [{ key: 'name', label: '型号', main: true }];
   const compareSet = new Set(compareIds);
@@ -5494,7 +6004,7 @@ function renderRulesHelp({ rules = [], query = '' }) {
     <div class="rule-list">${items || '<div class="empty-hint">没有匹配的规则。</div>'}</div>`;
 }
 
-return { "esc": esc, "renderLeftPanel": renderLeftPanel, "renderOverview": renderOverview, "renderStaleBanner": renderStaleBanner, "QUICK_TAGS": QUICK_TAGS, "renderToolbar": renderToolbar, "TABLE_COLUMNS": TABLE_COLUMNS, "cellValue": cellValue, "renderTable": renderTable, "renderCards": renderCards, "detailValue": detailValue, "renderDetail": renderDetail, "renderCompare": renderCompare, "renderCompatPanel": renderCompatPanel, "renderPowerPanel": renderPowerPanel, "renderTopBar": renderTopBar, "renderSchemeManager": renderSchemeManager, "renderEmptyGuide": renderEmptyGuide, "renderRulesHelp": renderRulesHelp };
+return { "esc": esc, "renderLeftPanel": renderLeftPanel, "renderOverview": renderOverview, "renderStaleBanner": renderStaleBanner, "QUICK_TAGS": QUICK_TAGS, "renderToolbar": renderToolbar, "TABLE_COLUMNS": TABLE_COLUMNS, "cellValue": cellValue, "renderChipTable": renderChipTable, "renderTable": renderTable, "renderCards": renderCards, "detailValue": detailValue, "renderDetail": renderDetail, "renderCompare": renderCompare, "renderCompatPanel": renderCompatPanel, "renderPowerPanel": renderPowerPanel, "renderTopBar": renderTopBar, "renderSchemeManager": renderSchemeManager, "renderEmptyGuide": renderEmptyGuide, "renderRulesHelp": renderRulesHelp };
 };
 __defs["src/ui/export.js"] = function(__deps){
 var CATEGORY_ORDER = __deps["src/core/enums.js"].CATEGORY_ORDER;
@@ -5900,13 +6410,18 @@ var renderEmptyGuide = __deps["src/ui/render.js"].renderEmptyGuide;
 var renderSchemeManager = __deps["src/ui/render.js"].renderSchemeManager;
 var renderStaleBanner = __deps["src/ui/render.js"].renderStaleBanner;
 var renderOverview = __deps["src/ui/render.js"].renderOverview;
+var renderChipTable = __deps["src/ui/render.js"].renderChipTable;
 var TABLE_COLUMNS = __deps["src/ui/render.js"].TABLE_COLUMNS;
+var groupByChipset = __deps["src/core/grouping.js"].groupByChipset;
+var isGrouped = __deps["src/core/grouping.js"].isGrouped;
+var isSingleVariant = __deps["src/core/grouping.js"].isSingleVariant;
 /**
  * 应用入口：把 store / rules / render 串起来并绑定 DOM 事件
  *
  * 分层：本文件是唯一接触 DOM 的写入方（配合 render.js 的纯字符串输出）。
  * 因此核心逻辑可以完整单测，而本层保持薄。
  */
+
 
 
 
@@ -6155,7 +6670,15 @@ function render() {
         ? renderEmptyGuide()
         : (s.ui.view === 'card'
             ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
-            : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare }))}
+            : (isGrouped(s.ui.category)
+                ? renderChipTable({
+                    category: s.ui.category,
+                    groups: groupByChipset(s.ui.category, v.items),
+                    checkCandidate: (r) => v.checkMap.get(r.id),
+                    isSelected: (r) => isSelected(r),
+                    expandedKey: s.ui.expandedChip || null,
+                  })
+                : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare })))}
     </div>
     ${showDetail ? `
     <div class="detail-zone" id="detail-zone">
@@ -6223,6 +6746,26 @@ function bindEvents() {
     // 品类切换
     if (t.dataset.category) {
       store.setCategory(t.dataset.category);
+      return;
+    }
+
+    // 芯片行：多版本则展开/收起，单版本直接选中
+    if (t.dataset.chipToggle || t.dataset.chip) {
+      const key = t.dataset.chipToggle || t.dataset.chip;
+      const groups = groupByChipset(s.ui.category, visibleList(indexAll(), derive().resolved).items);
+      const g = groups.find((x) => x.key === key);
+
+      if (!g) return;
+      // 单版本芯片：点击直接选中，省一次点击
+      if (isSingleVariant(g)) {
+        const rec = g.records[0];
+        if (isSelected(rec)) store.deselect(rec.category, rec.id);
+        else store.select(rec.category, rec.id);
+        return;
+      }
+      store.update((st) => {
+        st.ui.expandedChip = st.ui.expandedChip === key ? null : key;
+      }, 'toggle-chip');
       return;
     }
 
@@ -6869,9 +7412,10 @@ var __depsMeta = {
   "src/core/search.js": ["src/core/enums.js"],
   "schema/fields.js": [],
   "src/core/csv.js": ["src/core/enums.js", "schema/fields.js"],
-  "src/ui/render.js": ["src/core/enums.js", "src/core/search.js"],
+  "src/core/grouping.js": ["src/core/enums.js"],
+  "src/ui/render.js": ["src/core/enums.js", "src/core/search.js", "src/core/grouping.js"],
   "src/ui/export.js": ["src/core/enums.js", "src/ui/render.js"],
-  "src/ui/app.js": ["src/data/bundle.js", "src/core/store.js", "src/core/rules.js", "src/core/status.js", "src/core/search.js", "src/core/rules-data.js", "src/core/enums.js", "src/core/csv.js", "src/ui/export.js", "src/ui/render.js"]
+  "src/ui/app.js": ["src/data/bundle.js", "src/core/store.js", "src/core/rules.js", "src/core/status.js", "src/core/search.js", "src/core/rules-data.js", "src/core/enums.js", "src/core/csv.js", "src/ui/export.js", "src/ui/render.js", "src/core/grouping.js"]
 };
 __require("src/ui/app.js");
 })();

@@ -13,6 +13,7 @@ import {
   COOLER_TYPE_LABELS, LEVEL_LABELS, LEVEL_ICONS,
 } from '../core/enums.js';
 import { FILTER_DEFS, SORT_DEFS, conditionLabel } from '../core/search.js';
+import { groupByChipset, isGrouped, formatRange, isSingleVariant } from '../core/grouping.js';
 
 // ══════════════════════════════════════════════════════════════════
 // 基础工具
@@ -389,6 +390,15 @@ export function cellValue(rec, col) {
       return rec.baseClock ? `${rec.baseClock}-${rec.boostClock}` : '—';
     case '_igpu':
       return rec.igpu ? '有' : '无';
+    case 'powerConnectors': {
+      // 供电接口摘要：显卡变体行用，如「2×8pin」「1×12VHPWR」
+      const a = rec.pcie8pin || 0;
+      const b = rec.pcie12vhpwr || 0;
+      const parts = [];
+      if (a) parts.push(`${a}×8pin`);
+      if (b) parts.push(`${b}×12VHPWR`);
+      return parts.length ? parts.join(' + ') : '免外接';
+    }
     case '_formFactors':
       return Array.isArray(rec.formFactors) ? rec.formFactors.join(' ') : '—';
     case '_size':
@@ -432,6 +442,134 @@ export function cellValue(rec, col) {
  * @param {function} o.isSelected     (rec) => boolean
  * @param {Array}  o.compareIds      勾选对比的记录 id
  */
+/**
+ * 芯片组表格（PRD 3.1.2b）
+ *
+ * 显卡 / 主板按 chipset 归并：一行一个芯片，显示形态标签与尺寸区间；
+ * 点击芯片行展开该芯片下各品牌的具体变体（含真实长度/厚度/供电）。
+ *
+ * 重要：归并只发生在展示层。规则引擎仍按**具体型号**的尺寸计算，
+ * 因此变体行必须带 data-pick，选中的是变体而非芯片。
+ *
+ * @param {object} o
+ * @param {string} o.category
+ * @param {Array} o.groups        groupByChipset 的输出
+ * @param {function} o.checkCandidate (rec) => { level, findings }
+ * @param {function} o.isSelected     (rec) => boolean
+ * @param {string} [o.expandedKey]  当前展开的芯片 key
+ */
+export function renderChipTable({
+  category, groups = [], checkCandidate, isSelected, expandedKey = null,
+}) {
+  if (groups.length === 0) {
+    return `
+      <table class="hw-table chip-table">
+        <thead><tr>
+          <th class="pick"></th><th>芯片型号</th><th>形态</th>
+          <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
+          <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>
+        </tr></thead>
+      </table>
+      <div class="empty-hint">没有匹配的型号。试试清空搜索或关掉筛选。</div>`;
+  }
+
+  const head = `
+    <th class="pick"></th><th>芯片型号</th><th>形态</th>
+    <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
+    <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>`;
+
+  const rows = groups.map((g) => {
+    const expanded = expandedKey === g.key;
+    const selectedVariant = g.records.find((r) => isSelected?.(r)) || null;
+
+    // 芯片行的兼容状态：任一变体有错即视为该芯片存在冲突
+    const checks = g.records.map((r) => checkCandidate?.(r) || { level: 'ok' });
+    const worst = checks.reduce((acc, c) => {
+      const order = { ok: 0, info: 1, warn: 2, error: 3 };
+      return (order[c.level] || 0) > (order[acc] || 0) ? c.level : acc;
+    }, 'ok');
+
+    // 尺寸是否含估算值（有估算值则整体标 ≈）
+    const sizeApprox = g.records.some((r) => Array.isArray(r.estimated) && r.estimated.includes('length_mm'));
+    const approxMark = sizeApprox ? '<span class="approx" title="尺寸为估算值，请以实物规格为准">≈</span>' : '';
+
+    const variantTags = g.variants
+      .map((v) => `<span class="vtag vtag-${esc(v)}">${esc(v)}</span>`)
+      .join('');
+
+    const chipCell = `
+      <td class="main">
+        <button type="button" class="chip-name" data-chip="${esc(g.key)}"
+                title="${g.count > 1 ? `点击展开 ${g.count} 个品牌的具体版本` : '点击选中'}">
+          ${esc(g.label)}<span class="chip-caret">${g.count > 1 ? (expanded ? '▾' : '▸') : ''}</span>
+        </button>
+        ${g.count > 1 ? `<span class="chip-count">${g.count} 个版本</span>` : ''}
+        ${selectedVariant ? `<span class="badge">已选：${esc(selectedVariant.brand || selectedVariant.name.slice(0, 12))}</span>` : ''}
+      </td>`;
+
+    const row = `
+      <tr class="chip-row${worst === 'ok' ? '' : ' is-conflict'}" data-level="${esc(worst)}"
+          ${selectedVariant ? ' data-has-selected="1"' : ''}>
+        <td class="pick"><input type="checkbox" disabled></td>
+        ${chipCell}
+        <td class="chip-variants">${variantTags}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
+        <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
+        <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
+        <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>
+        <td class="ops">
+          ${g.count > 1
+            ? `<button type="button" class="btn-pick" data-chip-toggle="${esc(g.key)}">展开</button>`
+            : `<button type="button" class="btn-pick" data-pick="${esc(g.records[0].id)}">选它</button>`}
+        </td>
+      </tr>`;
+
+    if (!expanded) return row;
+
+    // 变体明细行
+    const variantRows = g.records.map((r) => {
+      const sel = isSelected?.(r);
+      const ck = checkCandidate?.(r) || { level: 'ok' };
+      const conflict = ck.level === 'error' || ck.level === 'warn';
+      const rApprox = Array.isArray(r.estimated) && r.estimated.includes('length_mm') ? '≈' : '';
+      const cond = conditionLabel(r.condition);
+      return `
+        <tr class="variant-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}"
+            data-level="${esc(ck.level)}" data-variant-of="${esc(g.key)}">
+          <td class="pick"></td>
+          <td class="main">
+            <span class="variant-brand">${esc(r.brand || '')}</span>
+            ${esc(r.name)}
+            ${cond ? `<span class="badge badge-cond">${esc(cond)}</span>` : ''}
+            ${r.custom ? '<span class="badge badge-custom">自定义</span>' : ''}
+            ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '存在兼容问题')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
+          </td>
+          <td class="variant-specs">
+            <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
+            <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
+          </td>
+          <td class="num">${esc(r.vram ?? '—')}</td>
+          <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
+          <td class="num"></td>
+          <td class="num"></td>
+          <td class="num"></td>
+          <td class="ops">
+            <button type="button" class="btn-pick" data-pick="${esc(r.id)}">${sel ? '已选' : '选它'}</button>
+          </td>
+        </tr>`;
+    }).join('');
+
+    return row + variantRows;
+  }).join('');
+
+  return `
+    <table class="hw-table chip-table">
+      <thead><tr>${head}</tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+}
+
 export function renderTable({ category, items = [], checkCandidate, isSelected, compareIds = [] }) {
   const cols = TABLE_COLUMNS[category] || [{ key: 'name', label: '型号', main: true }];
   const compareSet = new Set(compareIds);
