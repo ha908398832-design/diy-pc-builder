@@ -144,6 +144,36 @@ function toggleTheme() {
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
+/**
+ * 读取容器内某子元素的 scrollTop（用于跨重渲染保持滚动位置）
+ * 容��不存在或尚未渲染时返回 0。
+ */
+function readScroll(root, selector) {
+  try {
+    const el = root?.querySelector?.(selector);
+    return el && typeof el.scrollTop === 'number' ? el.scrollTop : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * 恢复 scrollTop
+ * 说明：内容尚未撑开时（scrollHeight 尚未更新）设置 scrollTop 会被浏览器忽略，
+ * 因此在下一帧再补一次，确保长列表也能正确还原。
+ */
+function restoreScroll(el, top) {
+  if (!el || !top) return;
+  try {
+    if (typeof el.scrollTop === 'number') el.scrollTop = top;
+    if (typeof requestAnimationFrame === 'function') {
+      requestAnimationFrame(() => {
+        try { el.scrollTop = top; } catch { /* 元素可能已卸载 */ }
+      });
+    }
+  } catch { /* 忽略：元素可能已卸载 */ }
+}
+
 function render() {
   const s = store.state;
   const d = derive();
@@ -193,7 +223,13 @@ function render() {
   // 若不提示数量，用户会以为"没有二手可选"。
   const usedCount = v.list.filter((r) => r.condition && r.condition !== 'new').length;
 
-  $('#panel-center').innerHTML = `
+  // 保留滚动位置：中栏每次都整体重建 innerHTML，新元素默认 scrollTop=0，
+  // 会导致「点一行看详情 → 列表跳回顶部」。这里先记录旧值，渲染后恢复。
+  const centerEl = $('#panel-center');
+  const prevListScroll = readScroll(centerEl, '.list-wrap');
+  const prevDetailScroll = readScroll(centerEl, '.detail-zone');
+
+  centerEl.innerHTML = `
     ${renderToolbar({
       category: s.ui.category,
       query: s.ui.query,
@@ -226,6 +262,10 @@ function render() {
             candidateCheck: detailRec ? checkCandidate(s.ui.category, detailRec, s.config, d.byId) : null,
           })}
     </div>`;
+
+  // 恢复滚动位置（见上方说明）
+  restoreScroll($('.list-wrap', centerEl), prevListScroll);
+  restoreScroll($('.detail-zone', centerEl), prevDetailScroll);
 
   // 右栏
   $('#panel-right').innerHTML = `

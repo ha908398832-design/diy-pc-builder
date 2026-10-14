@@ -266,8 +266,139 @@ test('左栏：失效引用显示「型号已失效」而非「未选」', () =>
 });
 
 // ══════════════════════════════════════════════════════════════════
-// 5. 无价格（回归：A15 门禁在美化后仍成立）
+// 6. 详情区与列表区的视觉分隔（回归：曾因两者同色而"糊在一起"）
 // ══════════════════════════════════════════════════════════════════
+
+test('分隔：详情区背景与列表区不同，且有实线边界', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+
+  const m = css.match(/\.detail-zone\s*\{([\s\S]*?)\}/);
+  assert.ok(m, '应存在 .detail-zone 规则');
+  const rule = m[1];
+
+  assert.ok(
+    /background:\s*var\(--bg\)/.test(rule),
+    '详情区应使用 --bg（下沉一层），不能与列表区的 --surface 同色',
+  );
+  assert.ok(
+    !/background:\s*var\(--surface\)/.test(rule),
+    '详情区不得再使用 --surface，否则与列表区同色看不出边界',
+  );
+  assert.ok(
+    /border-top:\s*1px solid var\(--border-strong\)/.test(rule),
+    '详情区顶部应有 --border-strong 实线分隔',
+  );
+
+  // 列表区本身确认为 --surface，两者形成对比
+  const listM = css.match(/\.list-wrap\s*\{([\s\S]*?)\}/);
+  assert.ok(listM, '应存在 .list-wrap 规则');
+  assert.ok(
+    !/background:\s*var\(--bg\)/.test(listM[1]),
+    '列表区不应使用 --bg（那是详情区的底色）',
+  );
+});
+
+test('分隔：深浅两套主题下 --bg 与 --surface 都有不同取值', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+
+  const dark = css.match(/:root\s*\{([\s\S]*?)\n\}/)[1];
+  const light = css.match(/:root\[data-theme="light"\]\s*\{([\s\S]*?)\n\}/)[1];
+
+  const pick = (block, name) =>
+    (block.match(new RegExp(`${name}:\\s*(#[0-9a-f]{6})`, 'i')) || [])[1];
+
+  for (const theme of ['深色', '浅色']) {
+    const block = theme === '深色' ? dark : light;
+    const bg = pick(block, '--bg');
+    const surface = pick(block, '--surface');
+    assert.ok(bg && surface, `${theme}主题应定义 --bg 与 --surface`);
+    assert.notEqual(
+      bg, surface,
+      `${theme}主题下 --bg 与 --surface 必须不同，否则详情区与列表区无法区分`,
+    );
+  }
+});
+
+test('分隔：详情区内的字段行使用第三层底色，与详情区自身也区分', () => {
+  const css = readFileSync(join(ROOT, 'src', 'styles.css'), 'utf8');
+  // .kv 是详情区里的字段行，应有独立底色或至少明确的下边线
+  const kv = css.match(/\.kv\s*\{([\s\S]*?)\}/);
+  assert.ok(kv, '应存在 .kv 规则');
+  assert.ok(
+    /border-bottom/.test(kv[1]) || /background/.test(kv[1]),
+    '字段行应有下边线或底色，便于逐行扫读',
+  );
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 7. 列表滚动位置（回归：曾因中栏整体重建 innerHTML 而每次置顶）
+// ══════════════════════════════════════════════════════════════════
+
+test('滚动：app.js 实现了读取与恢复 scrollTop 的成对辅助函数', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(/function readScroll\(/.test(src), '应有 readScroll 读取滚动位置');
+  assert.ok(/function restoreScroll\(/.test(src), '应有 restoreScroll 恢复滚动位置');
+  assert.ok(/\.scrollTop\s*=/.test(src), '应出现 scrollTop 赋值');
+});
+
+test('滚动：中栏渲染前保存、渲染后恢复（顺序正确）', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+
+  const assignIdx = src.indexOf('centerEl.innerHTML = ');
+  assert.ok(assignIdx > 0, '应存在中栏 innerHTML 赋值');
+
+  // 赋值前应出现保存
+  const beforeAssign = src.slice(Math.max(0, assignIdx - 900), assignIdx);
+  assert.ok(
+    /readScroll\(/.test(beforeAssign),
+    '中栏渲染前应保存 scrollTop（否则列表会被重置到顶部）',
+  );
+
+  // 赋值后应出现恢复
+  const afterAssign = src.slice(assignIdx, assignIdx + 3000);
+  assert.ok(afterAssign.indexOf('restoreScroll(') > 0, '中栏渲染后应恢复 scrollTop');
+});
+
+test('滚动：列表区与详情区都要恢复位置', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(
+    /readScroll\(centerEl, '\.list-wrap'\)/.test(src),
+    '应保存列表区滚动位置',
+  );
+  assert.ok(
+    /readScroll\(centerEl, '\.detail-zone'\)/.test(src),
+    '应保存详情区滚动位置（详情内容变长时也不该跳回顶部）',
+  );
+  assert.ok(/restoreScroll\(\$\('\.list-wrap'/.test(src), '应恢复列表区滚动位置');
+  assert.ok(/restoreScroll\(\$\('\.detail-zone'/.test(src), '应恢复详情区滚动位置');
+});
+
+test('滚动：恢复逻辑容忍元素缺失/已卸载（不抛异常）', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  const start = src.indexOf('function readScroll(');
+  const end = src.indexOf('function restoreScroll(');
+  const readFn = src.slice(start, end);
+  assert.ok(/try\s*\{/.test(readFn), 'readScroll 应有 try 容错');
+  assert.ok(/\?\./.test(readFn), 'readScroll 应使用可选链');
+
+  const restoreFn = src.slice(end, end + 700);
+  assert.ok(/if\s*\(!el\s*\|\|\s*!top\)\s*return;/.test(restoreFn), 'restoreScroll 应在无内容时直接返回');
+  assert.ok(/try\s*\{/.test(restoreFn), 'restoreScroll 应有 try 容错');
+});
+
+test('滚动：下次帧补一次（内容未撑开时也能还原）', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(
+    /requestAnimationFrame/.test(src),
+    '应使用 requestAnimationFrame 补一次，避免内容未撑开导致还原失败',
+  );
+});
+
+test('滚动：仅中栏改动，其它区域仍直接赋值', () => {
+  const src = readFileSync(join(ROOT, 'src', 'ui', 'app.js'), 'utf8');
+  assert.ok(src.includes("$('#topbar').innerHTML"), '顶栏仍应直接赋值');
+  assert.ok(src.includes('centerEl.innerHTML = '), '中栏改用 centerEl 变量以便前后插入滚动逻辑');
+});
 
 test('回归：新增的概览与主题按钮不含价格内容（A15）', () => {
   const b = compatibleBuild();

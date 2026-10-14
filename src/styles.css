@@ -756,8 +756,12 @@ tr.is-selected .btn-pick,
   flex: 0 0 auto;
   max-height: 40%;
   overflow: auto;
-  border-top: 1px solid var(--border);
-  background: var(--surface);
+  /* 详情区与列表区需要明确的层次分隔：
+     列表区是 --surface，详情区下沉一层用 --bg（深色下更暗、浅色下更灰），
+     再加上顶部一条实线，形成"详情面板嵌在下方"的视觉关系 */
+  background: var(--bg);
+  border-top: 1px solid var(--border-strong);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, .12);
   padding: var(--gap) var(--gap-lg) var(--gap-lg);
 }
 .detail-head, .compare-head {
@@ -774,13 +778,17 @@ tr.is-selected .btn-pick,
   gap: 0 var(--gap);
   font-size: 12px;
 }
+/* 字段行：浅色交替底 + 下边线，长列表也容易逐行扫读 */
 .kv {
   display: flex;
   justify-content: space-between;
   gap: var(--gap-sm);
-  padding: 5px 0;
+  padding: 6px 8px;
+  margin: 0 -8px;
   border-bottom: 1px solid var(--border);
+  border-radius: var(--r-sm);
 }
+.kv:nth-child(odd) { background: var(--surface); }
 .kv .k { color: var(--fg-3); }
 .kv .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-size: 11.5px; }
 
