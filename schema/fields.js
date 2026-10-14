@@ -138,7 +138,12 @@ export const CATEGORY_FIELDS = {
       { key: 'formFactor', type: 'string', required: true, enum: 'formFactor', label: '板型', rules: ['E4'], critical: true },
       { key: 'memoryType', type: 'string', required: true, enum: 'memoryType', label: '内存代数', rules: ['E2', 'E3'], critical: true },
       { key: 'memorySlots', type: 'number', required: true, label: '内存槽数', range: { min: 1, max: 8 }, rules: ['E17'], critical: true },
-      { key: 'maxMemory', type: 'number', required: false, unit: 'GB', label: '最大内存容量', range: { min: 16, max: 512 } },
+      // 容量下限放宽到 2GB：老平台确实只支持这么大。
+      // 实测公开数据集中 8GB 上限的主板 204 块、4GB 的 69 块、2GB 的 1 块
+      //（如 ASRock G41M-S 8GB / Intel DG41TX 4GB，均为 LGA775 平台）。
+      // 原下限 16 基于「所有主板都支持 ≥16GB」的错误假设，会误拒合法的老硬件。
+      // 该字段不被任何规则使用，仅供展示。
+      { key: 'maxMemory', type: 'number', required: false, unit: 'GB', label: '最大内存容量', range: { min: 2, max: 512 } },
       { key: 'maxMemorySpeed', type: 'number', required: true, unit: 'MT/s', label: '内存频率上限', range: { min: 1000, max: 12000 }, rules: ['W3'], critical: true },
       { key: 'pcieVersion', type: 'number', required: true, enum: 'pcieVersion', label: 'PCIe 版本', rules: ['W6'], critical: true },
       { key: 'pcieX16Slots', type: 'number', required: false, label: 'PCIe x16 槽数', range: { min: 0, max: 4 } },

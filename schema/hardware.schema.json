@@ -655,7 +655,7 @@
         },
         "maxMemory": {
           "type": "number",
-          "minimum": 16,
+          "minimum": 2,
           "maximum": 512,
           "title": "最大内存容量",
           "description": "单位: GB"

@@ -1,53 +1,65 @@
 /**
- * 把显卡变体候选合并进 data/gpu.json
+ * 变体数据合并工具（通用：显卡 / 主板）
+ *
+ * 把 `tmp-candidates-<cat>.json` 里的候选记录合并进 `data/<cat>.json`。
  *
  * 安全设计：写入前做 5 项自检，任一项不过即**拒绝写入**（退出码 1）
  *   1. 现有记录**零改动**（逐条 JSON 比对）
  *   2. id 无重复
- *   3. 必填字段无缺失
+ *   3. 必填字段无缺失（必填清单取自 schema/fields.js，不硬编码）
  *   4. 枚举合法（pcieVersion ∈ {3,4,5}；condition ∈ {new,used,mining,oem}）
  *   5. 不含 price 字段（本期不做价格，PRD 1.5）
  *
  * 用法:
- *   node tools/gen-gpu-variants.mjs     # 先生成候选
- *   node tools/merge-gpu-variants.mjs   # 审阅 tmp-candidates.json 后合并
- *
- * 先 dry-run 看看会加多少：
- *   node tools/merge-gpu-variants.mjs --dry
+ *   node tools/gen-gpu-variants.mjs && node tools/merge-variants.mjs gpu
+ *   node tools/gen-mb-variants.mjs  && node tools/merge-variants.mjs motherboard
+ *   node tools/merge-variants.mjs gpu --dry     # 只自检不写入
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { CATEGORY_FIELDS, requiredKeysOf } from '../schema/fields.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const FILE = join(ROOT, 'data', 'gpu.json');
-const CAND = join(ROOT, 'tmp-candidates.json');
-const dryRun = process.argv.includes('--dry');
 
-if (!existsSync(CAND)) {
-  console.error('缺少候选文件，请先运行: node tools/gen-gpu-variants.mjs');
+// ── 参数 ──
+const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+const dryRun = process.argv.includes('--dry');
+const cat = args[0];
+
+if (!cat || !CATEGORY_FIELDS[cat]) {
+  console.error('用法: node tools/merge-variants.mjs <gpu|motherboard> [--dry]');
+  console.error(`可用品类: ${Object.keys(CATEGORY_FIELDS).join(', ')}`);
   process.exit(1);
 }
 
-const before = JSON.parse(readFileSync(FILE, 'utf8'));
+const meta = CATEGORY_FIELDS[cat];
+const DATA = join(ROOT, 'data', meta.file);
+const CAND = join(ROOT, `tmp-candidates-${cat}.json`);
+
+if (!existsSync(CAND)) {
+  console.error(`缺少候选文件 ${CAND}`);
+  console.error(`请先运行: node tools/gen-${cat === 'gpu' ? 'gpu' : 'mb'}-variants.mjs`);
+  process.exit(1);
+}
+
+const before = JSON.parse(readFileSync(DATA, 'utf8'));
 const cand = JSON.parse(readFileSync(CAND, 'utf8'));
 
-/** 必填字段（与 schema/fields.js 的 gpu 品类一致） */
-const REQUIRED = [
-  'id', 'category', 'brand', 'name', 'chipset', 'length_mm',
-  'thicknessSlots', 'vram', 'tdp', 'pcie8pin', 'pcie12vhpwr',
-];
+/** 必填字段：从 schema 取，避免硬编码后与规范脱节 */
+const REQUIRED = requiredKeysOf(cat);
 const PCIE_VERSIONS = [3, 4, 5];
 const CONDITIONS = ['new', 'used', 'mining', 'oem'];
 
-console.log('═══ 显卡变体合并 ═══\n');
+console.log(`═══ ${meta.label} 变体合并 ═══\n`);
 console.log(`  现有: ${before.length} 条`);
 console.log(`  候选: ${cand.length} 条`);
+console.log(`  必填字段（取自 schema）: ${REQUIRED.length} 个\n`);
 
 // ── 清洗：去内部字段、修正别名、去重 ──
-const existingIds = new Set(before.map((g) => g.id));
-const existingNames = new Set(before.map((g) => String(g.name).toLowerCase()));
+const existingIds = new Set(before.map((r) => r.id));
+const existingNames = new Set(before.map((r) => String(r.name).toLowerCase()));
 const clean = [];
 const rejected = [];
 
@@ -87,16 +99,17 @@ console.log(`  1. 现有记录被改动: ${changed} ${changed === 0 ? '✅' : '�
 if (changed > 0) problems.push(`现有 ${changed} 条被改动`);
 
 // 2. id 唯一
-const ids = merged.map((g) => g.id);
+const ids = merged.map((r) => r.id);
 const dup = [...new Set(ids.filter((v, i) => ids.indexOf(v) !== i))];
 console.log(`  2. id 重复: ${dup.length} ${dup.length === 0 ? '✅' : '❌ ' + dup.slice(0, 3).join(', ')}`);
 if (dup.length) problems.push(`id 重复 ${dup.length} 个`);
 
 // 3. 必填字段
 const miss = [];
-for (const g of merged) {
+for (const r of merged) {
   for (const f of REQUIRED) {
-    if (g[f] === undefined || g[f] === null || g[f] === '') miss.push(`${g.id}.${f}`);
+    const v = r[f];
+    if (v === undefined || v === null || v === '') miss.push(`${r.id}.${f}`);
   }
 }
 console.log(`  3. 必填字段缺失: ${miss.length} ${miss.length === 0 ? '✅' : '❌ ' + miss.slice(0, 3).join(', ')}`);
@@ -104,19 +117,19 @@ if (miss.length) problems.push(`必填字段缺失 ${miss.length} 处`);
 
 // 4. 枚举合法
 const badEnum = [];
-for (const g of merged) {
-  if (g.pcieVersion !== undefined && !PCIE_VERSIONS.includes(g.pcieVersion)) {
-    badEnum.push(`${g.id}.pcieVersion=${g.pcieVersion}`);
+for (const r of merged) {
+  if (r.pcieVersion !== undefined && !PCIE_VERSIONS.includes(r.pcieVersion)) {
+    badEnum.push(`${r.id}.pcieVersion=${r.pcieVersion}`);
   }
-  if (!CONDITIONS.includes(g.condition)) {
-    badEnum.push(`${g.id}.condition=${g.condition}`);
+  if (!CONDITIONS.includes(r.condition)) {
+    badEnum.push(`${r.id}.condition=${r.condition}`);
   }
 }
 console.log(`  4. 枚举越界: ${badEnum.length} ${badEnum.length === 0 ? '✅' : '❌ ' + badEnum.slice(0, 3).join(', ')}`);
 if (badEnum.length) problems.push(`枚举越界 ${badEnum.length} 处`);
 
 // 5. 不含 price
-const withPrice = merged.filter((g) => 'price' in g).length;
+const withPrice = merged.filter((r) => 'price' in r).length;
 console.log(`  5. 含 price 字段: ${withPrice} ${withPrice === 0 ? '✅' : '❌'}`);
 if (withPrice) problems.push(`${withPrice} 条含 price`);
 
@@ -127,27 +140,27 @@ if (problems.length) {
 }
 
 if (dryRun) {
-  console.log(`\n✅ 自检通过（--dry 模式，未写入）`);
+  console.log(`\n✅ 自检通过（--dry，未写入）`);
   console.log(`   将变为: ${before.length} → ${merged.length} 条`);
   process.exit(0);
 }
 
-writeFileSync(FILE, JSON.stringify(merged, null, 2) + '\n', 'utf8');
-console.log(`\n✅ 已写入 data/gpu.json：${before.length} → ${merged.length} 条`);
+writeFileSync(DATA, JSON.stringify(merged, null, 2) + '\n', 'utf8');
+console.log(`\n✅ 已写入 data/${meta.file}：${before.length} → ${merged.length} 条`);
 
 // ── 统计 ──
-const brands = new Set(merged.map((g) => g.brand));
-const chips = new Set(merged.map((g) => g.chipset));
-const byChip = {};
-for (const g of merged) (byChip[g.chipset] ||= []).push(g.length_mm);
-const multi = Object.values(byChip).filter((l) => l.length > 1);
-const withDiff = multi.filter((l) => new Set(l).size > 1);
+const brands = new Set(merged.map((r) => r.brand));
+const groups = {};
+for (const r of merged) {
+  const key = cat === 'motherboard' ? `${r.chipset}·${r.formFactor}` : r.chipset;
+  (groups[key] ||= []).push(r);
+}
+const multi = Object.entries(groups).filter(([, l]) => l.length > 1);
 
 console.log('\n─── 合并后统计 ───\n');
-console.log(`  总条数:   ${merged.length}`);
-console.log(`  品牌数:   ${brands.size}`);
-console.log(`  芯片数:   ${chips.size}`);
-console.log(`  二手/矿卡: ${merged.filter((g) => g.condition !== 'new').length}`);
-console.log(`  多变体芯片: ${multi.length}`);
-console.log(`  长度有区分度: ${withDiff.length}  ← 用户能看到"不同品牌长度不同"`);
-console.log(`\n  下一步: node tools/validate-data.mjs gpu && node tools/gate.mjs`);
+console.log(`  总条数:    ${merged.length}`);
+console.log(`  品牌数:    ${brands.size}`);
+console.log(`  分组数:    ${Object.keys(groups).length}`);
+console.log(`  多版本组:  ${multi.length}`);
+console.log(`  二手/矿卡/洋垃圾: ${merged.filter((r) => r.condition !== 'new').length}`);
+console.log(`\n  下一步: node tools/gen-data-bundle.mjs && node tools/gate.mjs`);

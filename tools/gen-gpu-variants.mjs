@@ -16,7 +16,7 @@
  * 用法:
  *   node tools/fetch-dataset.mjs gpu        # 先下载（若未下载）
  *   node tools/gen-gpu-variants.mjs         # 生成候选到 tmp-candidates.json
- *   node tools/merge-gpu-variants.mjs       # 审阅后合并进 data/gpu.json
+ *   node tools/merge-variants.mjs gpu       # 审阅后合并进 data/gpu.json
  */
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -254,7 +254,7 @@ for (const [chip, ref] of chipRef) {
   }
 }
 
-const OUT = join(ROOT, 'tmp-candidates.json');
+const OUT = join(ROOT, 'tmp-candidates-gpu.json');
 writeFileSync(OUT, JSON.stringify(candidates, null, 2), 'utf8');
 
 console.log('═══ 显卡变体生成 ═══\n');
@@ -266,5 +266,5 @@ if (skipped.length) console.log(`  数据集无覆盖的芯片 (${skipped.length
 const conds = {};
 for (const c of candidates) conds[c.condition] = (conds[c.condition] || 0) + 1;
 console.log(`  成色分布: ${JSON.stringify(conds)}`);
-console.log(`\n   输出: tmp-candidates.json`);
-console.log(`   下一步: node tools/merge-gpu-variants.mjs`);
+console.log(`\n   输出: tmp-candidates-gpu.json`);
+console.log(`   下一步: node tools/merge-variants.mjs gpu`);
