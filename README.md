@@ -62,8 +62,15 @@
 **① 下载 Release 附件**（最省事）
 
 1. 打开 [Releases 页面](https://github.com/ha908398832-design/diy-pc-builder/releases/latest)
-2. 在 **Assets** 区点 `装机助手.html` —— 浏览器会直接开始下载
+2. 在 **Assets** 区点 `diy-pc-builder.html` —— 浏览器会直接开始下载
 3. **双击**下载好的文件，用浏览器打开即用
+
+> **附件名为什么是 `diy-pc-builder.html` 而不是 `装机助手.html`？**
+>
+> 因为 GitHub 会**剥掉附件名里的所有非 ASCII 字符**（实测：`café.html` → `cafe.html`，
+> `装机助手.html` → 兜底的 `default.html`）。所以附件名只能用英文。
+>
+> **文件本身一模一样，下载后随便改名都不影响使用** —— 想叫 `装机助手.html` 自己改就行。
 
 **② 在线直接用**（连下载都省了）
 
