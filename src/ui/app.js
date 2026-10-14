@@ -1,0 +1,706 @@
+/**
+ * 应用入口：把 store / rules / render 串起来并绑定 DOM 事件
+ *
+ * 分层：本文件是唯一接触 DOM 的写入方（配合 render.js 的纯字符串输出）。
+ * 因此核心逻辑可以完整单测，而本层保持薄。
+ */
+
+import { DATA, buildIndex } from '../data/bundle.js';
+import { Store } from '../core/store.js';
+import { checkCompatibility, checkCandidate } from '../core/rules.js';
+import { computeStatusLights, countFindings, selectionSummary } from '../core/status.js';
+import { queryList, FILTER_DEFS, collectOptions } from '../core/search.js';
+import { RULES, RULE_MAP } from '../core/rules-data.js';
+import { CATEGORY_LABELS, CATEGORY_ORDER } from '../core/enums.js';
+import { buildImportReport, mergeRecords, stripCustom, buildTemplateCsv } from '../core/csv.js';
+import { buildExport, downloadBlob } from './export.js';
+import {
+  renderLeftPanel, renderToolbar, renderTable, renderCards, renderDetail,
+  renderCompare, renderCompatPanel, renderPowerPanel, renderTopBar,
+  renderRulesHelp, renderEmptyGuide, TABLE_COLUMNS,
+} from './render.js';
+
+// ══════════════════════════════════════════════════════════════════
+// 库：内置数据 + 自定义数据 合并
+// ══════════════════════════════════════════════════════════════════
+
+const store = new Store();
+
+/**
+ * 取得合并后的某品类数据（内置 + 自定义；自定义优先覆盖同 id）
+ */
+function listOf(category) {
+  const builtin = DATA[category] || [];
+  const custom = store.state.custom?.[category] || [];
+  if (custom.length === 0) return builtin;
+  const byId = new Map(builtin.map((r) => [r.id, r]));
+  for (const r of custom) byId.set(r.id, r);
+  return [...byId.values()];
+}
+
+/** 全库索引（含自定义），供规则引擎解析 ID */
+function indexAll() {
+  const m = new Map();
+  for (const cat of CATEGORY_ORDER) {
+    for (const r of listOf(cat)) m.set(r.id, r);
+  }
+  return m;
+}
+
+/** 取得配置中某品类已选记录（硬盘为数组） */
+function selectedOf(category, byId) {
+  const v = store.state.config[category];
+  if (category === 'storage') {
+    const arr = Array.isArray(v) ? v : v ? [v] : [];
+    return arr.map((id) => byId.get(id)).filter(Boolean);
+  }
+  return v ? byId.get(v) || null : null;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 派生数据：一次计算，多处复用
+// ══════════════════════════════════════════════════════════════════
+
+function derive() {
+  const byId = indexAll();
+  // 规则引擎需要「已解析」的对象形态
+  const resolved = {};
+  for (const cat of CATEGORY_ORDER) resolved[cat] = selectedOf(cat, byId);
+
+  const result = checkCompatibility({ resolved, config: store.state.config });
+  const lights = computeStatusLights({ findings: result.findings, config: store.state.config });
+  const ruleCounts = countFindings(result.findings);
+  const summary = selectionSummary(store.state.config);
+
+  return { byId, resolved, result, lights, ruleCounts, summary };
+}
+
+/** 中栏当前列表（搜索/筛选/排序 + 行内兼容标记） */
+function visibleList(byId, resolved) {
+  const { category, query, filters, sort, includeUsed } = store.state.ui;
+  const list = listOf(category);
+
+  const { items, total, matched } = queryList({
+    list, category, query, filters, sort, includeUsed,
+  });
+
+  // 行内兼容标记：只对可见的前若干条计算，避免大列表卡顿
+  const LIMIT = 200;
+  const checkMap = new Map();
+  for (const rec of items.slice(0, LIMIT)) {
+    checkMap.set(rec.id, checkCandidate(category, rec, store.state.config, byId));
+  }
+
+  return { category, items, total, matched, checkMap, list };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 渲染
+// ══════════════════════════════════════════════════════════════════
+
+const $ = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
+
+function render() {
+  const s = store.state;
+  const d = derive();
+  const v = visibleList(d.byId, d.resolved);
+
+  // 顶部栏
+  $('#topbar').innerHTML = renderTopBar({
+    schemes: store.schemeNames(),
+    currentScheme: s.currentScheme,
+    dirty: s.dirty,
+  });
+
+  // 左栏
+  $('#panel-left').innerHTML = renderLeftPanel({
+    config: s.config,
+    byId: d.byId,
+    lights: d.lights.lights,
+    active: s.ui.category,
+    summary: d.summary,
+    ruleCounts: d.ruleCounts,
+  });
+
+  // 中栏
+  const compareRecs = (s.ui.compare || []).map((id) => d.byId.get(id)).filter(Boolean);
+  const detailRec = s.ui.selectedDetail ? d.byId.get(s.ui.selectedDetail) : null;
+
+  $('#panel-center').innerHTML = `
+    ${renderToolbar({ category: s.ui.category, query: s.ui.query, view: s.ui.view, sort: s.ui.sort, includeUsed: s.ui.includeUsed })}
+    <div class="list-meta">
+      <span>共 ${v.total} 个型号</span>
+      <span>匹配 <b>${v.matched}</b></span>
+      ${s.ui.includeUsed ? '<span class="muted">已含二手</span>' : ''}
+    </div>
+    <div class="list-wrap">
+      ${v.items.length === 0 && !s.ui.query && Object.keys(s.ui.filters).length === 0
+        ? renderEmptyGuide()
+        : (s.ui.view === 'card'
+            ? renderCards({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r) })
+            : renderTable({ category: s.ui.category, items: v.items, checkCandidate: (r) => v.checkMap.get(r.id), isSelected: (r) => isSelected(r), compareIds: s.ui.compare }))}
+    </div>
+    <div class="detail-zone" id="detail-zone">
+      ${compareRecs.length >= 2
+        ? renderCompare({ category: s.ui.category, records: compareRecs, checkCandidate: (r) => checkCandidate(s.ui.category, r, s.config, d.byId) })
+        : renderDetail({
+            category: s.ui.category,
+            record: detailRec,
+            candidateCheck: detailRec ? checkCandidate(s.ui.category, detailRec, s.config, d.byId) : null,
+          })}
+    </div>`;
+
+  // 右栏
+  $('#panel-right').innerHTML = `
+    ${renderCompatPanel({
+      findings: d.result.findings,
+      counts: d.result.counts,
+      checked: d.result.checked,
+      skipped: d.result.skipped,
+      filter: s.ui.findingFilter,
+    })}
+    <div class="right-divider"></div>
+    ${renderPowerPanel({ power: d.result.power })}`;
+
+  // 右栏收起状态
+  document.body.classList.toggle('right-collapsed', !!s.ui.rightCollapsed);
+
+  // 存储降级提示
+  const warn = $('#storage-warning');
+  if (warn) {
+    if (store.storageWarning) {
+      warn.textContent = `⚠ ${store.storageWarning}`;
+      warn.hidden = false;
+    } else {
+      warn.hidden = true;
+    }
+  }
+}
+
+function isSelected(rec) {
+  const cfg = store.state.config;
+  if (rec.category === 'storage') {
+    return Array.isArray(cfg.storage) && cfg.storage.includes(rec.id);
+  }
+  return cfg[rec.category] === rec.id;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 事件绑定（委托到根节点，避免每次渲染重绑）
+// ══════════════════════════════════════════════════════════════════
+
+function bindEvents() {
+  const root = document.getElementById('app');
+
+  root.addEventListener('click', (e) => {
+    const t = e.target.closest('button, [data-category]');
+    if (!t) return;
+
+    // 品类切换
+    if (t.dataset.category) {
+      store.setCategory(t.dataset.category);
+      return;
+    }
+
+    // 选择 / 取消
+    if (t.dataset.pick) {
+      const byId = indexAll();
+      const rec = byId.get(t.dataset.pick);
+      if (!rec) return;
+      const cat = rec.category;
+      if (isSelected(rec)) store.deselect(cat, rec.id);
+      else store.select(cat, rec.id);
+      return;
+    }
+
+    // 加入对比
+    if (t.dataset.compareAdd) {
+      store.toggleCompare(t.dataset.compareAdd);
+      return;
+    }
+
+    // 跳转到冲突品类
+    if (t.dataset.goto) {
+      store.setCategory(t.dataset.goto);
+      return;
+    }
+
+    // 过滤右栏
+    if (t.dataset.filter) {
+      store.setFindingFilter(t.dataset.filter);
+      return;
+    }
+
+    // 视图切换
+    if (t.dataset.view) {
+      store.setView(t.dataset.view);
+      return;
+    }
+
+    // 快捷标签
+    if (t.dataset.quick) {
+      applyQuickTag(t.dataset.quick);
+      return;
+    }
+
+    // 规则编号 → 规则说明
+    if (t.dataset.rule) {
+      openRulesHelp(t.dataset.rule);
+      return;
+    }
+
+    // 全局操作
+    switch (t.dataset.action) {
+      case 'reset-all':
+        if (confirm('确定清空全部已选配件吗？（已保存的方案不受影响）')) store.resetAll();
+        break;
+      case 'recheck':
+        render();
+        break;
+      case 'compare-clear':
+        store.clearCompare();
+        break;
+      case 'toggle-right':
+        store.toggleRightCollapsed();
+        break;
+      case 'sort-dir':
+        store.toggleSortDir();
+        break;
+      case 'save':
+        promptSaveScheme();
+        break;
+      case 'scheme-new':
+        store.resetAll();
+        break;
+      case 'compare-open':
+        openSchemeCompare();
+        break;
+      case 'export-open':
+        openExport();
+        break;
+      case 'import-open':
+        openImport();
+        break;
+      case 'rules-help':
+        openRulesHelp();
+        break;
+      case 'suggest-psu': {
+        // 按建议瓦数跳到电源并设置瓦数下限筛选
+        const watts = Number(t.dataset.watts) || 0;
+        store.update((s) => {
+          s.ui.category = 'psu';
+          s.ui.filters = { wattage: { min: watts } };
+          s.ui.query = '';
+        }, 'suggest-psu');
+        break;
+      }
+      case 'show-power-detail':
+        alert(powerDetailText());
+        break;
+      case 'modal-close':
+        closeModal();
+        break;
+      default:
+        break;
+    }
+  });
+
+  // 搜索输入（输入即搜）
+  root.addEventListener('input', (e) => {
+    const el = e.target;
+    if (el.dataset.role === 'search') {
+      store.setQuery(el.value);
+      // 保持焦点与光标位置
+      const pos = el.selectionStart;
+      render();
+      const next = $('[data-role="search"]');
+      if (next) {
+        next.focus();
+        try { next.setSelectionRange(pos, pos); } catch { /* 忽略 */ }
+      }
+    }
+    if (el.dataset.role === 'rules-search') {
+      const html = renderRulesHelp({ rules: RULES, query: el.value });
+      $('#modal-body').innerHTML = html;
+      const box = $('#modal-body [data-role="rules-search"]');
+      if (box) { box.focus(); box.setSelectionRange(el.value.length, el.value.length); }
+    }
+  });
+
+  // 下拉与勾选
+  root.addEventListener('change', (e) => {
+    const el = e.target;
+    if (el.dataset.role === 'sort-key') {
+      store.setSort(el.value, store.state.ui.sort?.dir || 'asc');
+    }
+    if (el.dataset.role === 'include-used') {
+      store.setIncludeUsed(el.checked);
+    }
+    if (el.dataset.role === 'scheme') {
+      if (el.value) store.loadScheme(el.value);
+    }
+    if (el.dataset.compare !== undefined) {
+      store.toggleCompare(el.dataset.compare);
+    }
+    if (el.dataset.role === 'filter-field') {
+      const { key, type } = parseFilterDataset(el);
+      if (type === 'boolean') store.setFilter(key, el.checked || undefined);
+      else store.setFilter(key, el.value || undefined);
+    }
+    if (el.dataset.role === 'filter-range') {
+      const { key, bound } = parseFilterDataset(el);
+      const cur = store.state.ui.filters[key] || {};
+      store.setFilter(key, { ...cur, [bound]: el.value === '' ? '' : Number(el.value) });
+    }
+  });
+
+  // 双击行直接加入配置
+  root.addEventListener('dblclick', (e) => {
+    const row = e.target.closest('.hw-row, .hw-card');
+    if (!row) return;
+    const byId = indexAll();
+    const rec = byId.get(row.dataset.id);
+    if (rec && !isSelected(rec)) store.select(rec.category, rec.id);
+  });
+
+  // 单击行显示详情
+  root.addEventListener('click', (e) => {
+    const row = e.target.closest('.hw-row, .hw-card');
+    if (!row) return;
+    if (e.target.closest('button, input')) return; // 按钮/勾选框已单独处理
+    store.setDetail(row.dataset.id);
+  });
+
+  // 键盘快捷键（PRD 6.11）
+  document.addEventListener('keydown', (e) => {
+    // Ctrl+S 保存 / Ctrl+E 导出
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      e.preventDefault();
+      promptSaveScheme();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'e') {
+      e.preventDefault();
+      openExport();
+      return;
+    }
+    if (e.key === 'Escape') {
+      closeModal();
+      return;
+    }
+    const inInput = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || '');
+    if (e.key === '/' && !inInput) {
+      e.preventDefault();
+      $('[data-role="search"]')?.focus();
+      return;
+    }
+    // 1~8 切品类
+    if (!inInput && /^[1-8]$/.test(e.key)) {
+      const cat = CATEGORY_ORDER[Number(e.key) - 1];
+      if (cat) store.setCategory(cat);
+    }
+  });
+
+  // 订阅 store 变更 → 重渲染
+  store.subscribe(() => render());
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 快捷标签与筛选面板
+// ══════════════════════════════════════════════════════════════════
+
+function applyQuickTag(tag) {
+  store.update((s) => {
+    s.ui.query = '';
+    switch (tag) {
+      case 'all': s.ui.filters = {}; break;
+      case 'igpu': s.ui.filters = { igpu: true }; break;
+      case 'unlocked': s.ui.filters = { unlocked: true }; break;
+      case 'lowPower': {
+        const cat = s.ui.category;
+        if (cat === 'cpu') s.ui.filters = { maxPower: { max: 65 } };
+        else if (cat === 'gpu') s.ui.filters = { tdp: { max: 150 } };
+        else s.ui.filters = {};
+        break;
+      }
+      case 'highPower': s.ui.filters = { wattage: { min: 750 } }; break;
+      case 'short': s.ui.filters = { length_mm: { max: 250 } }; break;
+      case 'longGpu': s.ui.filters = { maxGpuLength: { min: 350 } }; break;
+      case 'tallCooler': s.ui.filters = { maxCoolerHeight: { min: 160 } }; break;
+      case 'lowProfile': s.ui.filters = { height_mm: { max: 70 } }; break;
+      case 'dram': s.ui.filters = { dram: true }; break;
+      default: {
+        // 形如 brand:AMD / formFactor:M-ATX / modules:2
+        const [key, val] = tag.split(':');
+        if (!key || val === undefined) { s.ui.filters = {}; break; }
+        const num = Number(val);
+        s.ui.filters = { [key]: Number.isFinite(num) && String(num) === val ? num : val };
+      }
+    }
+  }, 'quick-tag');
+}
+
+function parseFilterDataset(el) {
+  return {
+    key: el.dataset.key,
+    type: el.dataset.type,
+    bound: el.dataset.bound,
+    values: el.dataset.values ? el.dataset.values.split(';') : null,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 弹窗
+// ══════════════════════════════════════════════════════════════════
+
+function openModal(title, bodyHtml) {
+  const m = $('#modal');
+  m.hidden = false;
+  $('#modal-body').innerHTML = bodyHtml;
+}
+
+function closeModal() {
+  const m = $('#modal');
+  if (m) m.hidden = true;
+  const inp = $('#file-input');
+  if (inp) inp.value = '';
+}
+
+function openRulesHelp(highlightId = null) {
+  openModal('规则说明', renderRulesHelp({ rules: RULES, query: highlightId || '' }));
+}
+
+/** 保存方案 */
+function promptSaveScheme() {
+  const names = store.schemeNames();
+  const suggest = store.state.currentScheme || `方案 ${names.length + 1}`;
+  const name = prompt('方案名称：', suggest);
+  if (!name) return;
+  store.saveScheme(name.trim());
+  toast(`已保存方案「${name.trim()}」`);
+}
+
+/** 方案对比（PRD 6.7.1：只比型号、兼容性、功耗，不含价格） */
+function openSchemeCompare() {
+  const names = store.schemeNames();
+  if (names.length < 2) {
+    openModal('方案对比', '<div class="empty-hint">至少需要保存 2 套方案才能对比。先选好一套配置点「💾保存」。</div>');
+    return;
+  }
+  const a = names[0];
+  const b = names[1];
+  const byId = indexAll();
+  const rows = [];
+  for (const cat of CATEGORY_ORDER) {
+    const idA = (store.state.schemes[a].config || {})[cat];
+    const idB = (store.state.schemes[b].config || {})[cat];
+    const recA = cat === 'storage'
+      ? (Array.isArray(idA) ? idA : []).map((x) => byId.get(x)).filter(Boolean)[0]
+      : byId.get(idA);
+    const recB = cat === 'storage'
+      ? (Array.isArray(idB) ? idB : []).map((x) => byId.get(x)).filter(Boolean)[0]
+      : byId.get(idB);
+    const same = (recA?.id || null) === (recB?.id || null);
+    rows.push(`
+      <tr class="${same ? '' : 'row-diff'}">
+        <th class="k">${CATEGORY_LABELS[cat]}</th>
+        <td>${recA ? escapeHtml(recA.name) : '未选'}</td>
+        <td>${recB ? escapeHtml(recB.name) : '未选'}</td>
+        <td>${same ? '相同' : '不同'}</td>
+      </tr>`);
+  }
+
+  // 各自跑一次兼容性与功耗
+  const stat = (name) => {
+    const cfg = store.state.schemes[name].config || {};
+    const res = checkCompatibility({ config: cfg, byId });
+    return { res };
+  };
+  const sa = stat(a);
+  const sb = stat(b);
+
+  openModal('方案对比', `
+    <div class="modal-toolbar">
+      <label>左：<select id="cmp-left">${names.map((n) => `<option${n === a ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select></label>
+      <label>右：<select id="cmp-right">${names.map((n) => `<option${n === b ? ' selected' : ''}>${escapeHtml(n)}</option>`).join('')}</select></label>
+    </div>
+    <table class="compare-table scheme-compare">
+      <thead><tr><th class="k">部件</th><th>${escapeHtml(a)}</th><th>${escapeHtml(b)}</th><th>差异</th></tr></thead>
+      <tbody>
+        ${rows.join('')}
+        <tr class="compat-row">
+          <th class="k">兼容性</th>
+          <td>🔴${sa.res.counts.error} 🟡${sa.res.counts.warn}</td>
+          <td>🔴${sb.res.counts.error} 🟡${sb.res.counts.warn}</td>
+          <td>—</td>
+        </tr>
+        <tr class="compat-row">
+          <th class="k">功耗</th>
+          <td>${sa.res.power.peak}W / ${sa.res.power.psuWattage ?? '未选'}W</td>
+          <td>${sb.res.power.peak}W / ${sb.res.power.psuWattage ?? '未选'}W</td>
+          <td>—</td>
+        </tr>
+      </tbody>
+    </table>`);
+}
+
+/** 导出（M9） */
+function openExport() {
+  const d = derive();
+  openModal('导出清单', `
+    <div class="modal-toolbar">
+      <label>格式：
+        <select id="exp-format">
+          <option value="xlsx">表格 (.xlsx)</option>
+          <option value="csv">CSV（Excel 可直接打开）</option>
+          <option value="text">纯文本</option>
+        </select>
+      </label>
+    </div>
+    <div class="exp-options">
+      <label><input type="checkbox" id="exp-params" checked> 关键参数摘要</label>
+      <label><input type="checkbox" id="exp-notes" checked> 兼容性备注</label>
+      <label><input type="checkbox" id="exp-used"> 二手风险提示</label>
+    </div>
+    <div class="exp-preview" id="exp-preview"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn-primary" id="exp-do">导出</button>
+      <button type="button" class="btn-ghost" data-action="modal-close">取消</button>
+    </div>`);
+
+  const preview = () => {
+    const fmt = $('#exp-format').value;
+    const opts = {
+      includeParams: $('#exp-params').checked,
+      includeNotes: $('#exp-notes').checked,
+      includeUsedWarning: $('#exp-used').checked,
+      format: fmt,
+    };
+    const out = buildExport(d.resolved, d.result, opts);
+    $('#exp-preview').innerHTML = `<pre>${escapeHtml(out.preview)}</pre>`;
+    return out;
+  };
+
+  preview();
+  for (const id of ['exp-format', 'exp-params', 'exp-notes', 'exp-used']) {
+    $(`#${id}`).addEventListener('change', preview);
+  }
+  $('#exp-do').addEventListener('click', () => {
+    const out = preview();
+    downloadBlob(out.filename, out.blob);
+    toast(`已导出 ${out.filename}`);
+  });
+}
+
+/** CSV 导入（M2） */
+function openImport() {
+  openModal('导入硬件数据', `
+    <div class="modal-toolbar">
+      <label>1️⃣ 品类：
+        <select id="imp-cat">
+          ${CATEGORY_ORDER.map((c) => `<option value="${c}">${CATEGORY_LABELS[c]}</option>`).join('')}
+        </select>
+      </label>
+      <label>2️⃣ 文件：<input type="file" id="imp-file" accept=".csv,text/csv"></label>
+      <button type="button" class="btn-ghost" id="imp-template">下载空白模板</button>
+    </div>
+    <div id="imp-report" class="imp-report"><div class="empty-hint">选择 CSV 文件后在这里显示校验报告。</div></div>
+    <div class="modal-actions">
+      <span class="muted">重名处理：</span>
+      <label><input type="radio" name="imp-dup" value="skip" checked> 跳过</label>
+      <label><input type="radio" name="imp-dup" value="overwrite"> 覆盖</label>
+      <label><input type="radio" name="imp-dup" value="keep-both"> 并存</label>
+      <button type="button" class="btn-primary" id="imp-do" disabled>确认导入</button>
+      <button type="button" class="btn-ghost" data-action="modal-close">取消</button>
+    </div>`);
+
+  let pending = null;
+
+  $('#imp-template').addEventListener('click', () => {
+    const cat = $('#imp-cat').value;
+    const csv = buildTemplateCsv(cat);
+    downloadBlob(`${cat}-模板.csv`, new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  });
+
+  $('#imp-file').addEventListener('change', async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const cat = $('#imp-cat').value;
+    const text = await file.text();
+    const existing = listOf(cat).filter((r) => !r.custom);
+    const report = buildImportReport(text, cat, existing);
+    pending = { cat, report };
+
+    const dup = report.duplicates.length;
+    $('#imp-report').innerHTML = `
+      <div class="imp-summary">
+        <div class="ok">✅ 可用 ${report.summary.valid} 条</div>
+        <div class="warn">⚠ 非法 ${report.summary.invalid} 条（将跳过）</div>
+        <div class="warn">⚠ 重名 ${dup} 条</div>
+      </div>
+      ${report.invalid.length ? `<details><summary>查看非法明细</summary><ul>${report.invalid.map((i) => `<li>第 ${i.row} 行：${escapeHtml(i.errors.join('；'))}</li>`).join('')}</ul></details>` : ''}
+      ${dup ? `<details><summary>查看重名明细</summary><ul>${report.duplicates.map((i) => `<li>第 ${i.row} 行：${escapeHtml(i.id)}${i.inFile ? '（文件内重复）' : '（与现有型号同名）'}</li>`).join('')}</ul></details>` : ''}
+      ${report.warnings.length ? `<div class="muted small">${escapeHtml(report.warnings.join('；'))}</div>` : ''}`;
+    $('#imp-do').disabled = report.summary.valid + dup === 0;
+  });
+
+  $('#imp-do').addEventListener('click', () => {
+    if (!pending) return;
+    const strategy = document.querySelector('input[name="imp-dup"]:checked')?.value || 'skip';
+    const { cat, report } = pending;
+    const existing = listOf(cat).filter((r) => !r.custom);
+    const merged = mergeRecords(existing, report, strategy);
+    store.setCustom(cat, merged.merged.filter((r) => r.custom));
+    closeModal();
+    toast(`已导入 ${merged.added} 条（覆盖 ${merged.overwritten}、跳过 ${merged.skipped}、并存 ${merged.renamed}）`);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 辅助
+// ══════════════════════════════════════════════════════════════════
+
+function powerDetailText() {
+  const d = derive();
+  const p = d.result.power;
+  const lines = p.breakdown.map((b) => `${b.label}：${b.watts}W\n    ${b.basis}`);
+  lines.push('', `整机峰值：${p.peak}W`, `建议电源：≥${p.recommendedPsu}W（峰值 ×1.4 向上取 50W 档）`);
+  if (p.psuWattage !== null) lines.push(`当前电源：${p.psuWattage}W，余量 ${p.margin}%`);
+  return lines.join('\n');
+}
+
+function escapeHtml(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = $('#toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = false;
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.hidden = true; }, 2000);
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 启动
+// ══════════════════════════════════════════════════════════════════
+
+export function start() {
+  render();
+  bindEvents();
+  // 启动时把数据规模写到控制台，便于确认内联数据已加载
+  console.log(`[装机助手] 已加载 ${[...CATEGORY_ORDER].reduce((n, c) => n + listOf(c).length, 0)} 个型号`);
+}
+
+// 供调试与测试使用
+export { store, listOf, indexAll, selectedOf, derive, visibleList };
+
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+}

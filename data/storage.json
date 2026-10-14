@@ -1,0 +1,796 @@
+[
+  {
+    "id": "storage-samsung-9100pro-2tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "9100 PRO 2TB",
+    "aliases": [
+      "9100pro",
+      "9100 PRO 2T",
+      "三星9100PRO"
+    ],
+    "year": 2025,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 5.0 x4 旗舰，带独立 DRAM 缓存，官方标称顺序读写 14800/13400 MB/s",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 5,
+    "readSpeed": 14800,
+    "writeSpeed": 13400,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1200,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-9100pro-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "9100 PRO 1TB",
+    "aliases": [
+      "9100pro1t",
+      "9100 PRO 1T"
+    ],
+    "year": 2025,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 5.0 x4 旗舰，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 5,
+    "readSpeed": 14700,
+    "writeSpeed": 13300,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-zhi-tai-tipro9000-2tb",
+    "category": "storage",
+    "brand": "致态",
+    "name": "TiPro9000 2TB",
+    "aliases": [
+      "tipro9000",
+      "ti pro 9000",
+      "致态9000"
+    ],
+    "year": 2024,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "长江存储 PCIe 5.0 旗舰，带独立 DRAM 缓存，官方标称顺序读写 14000/13000 MB/s",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 5,
+    "readSpeed": 14000,
+    "writeSpeed": 13000,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1200,
+    "heatsink": true
+  },
+  {
+    "id": "storage-crucial-t705-2tb",
+    "category": "storage",
+    "brand": "英睿达",
+    "name": "T705 2TB",
+    "aliases": [
+      "t705",
+      "crucial t705"
+    ],
+    "year": 2024,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "美光 PCIe 5.0 旗舰，带独立 DRAM 缓存，官方标称顺序读写 14500/12700 MB/s",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 5,
+    "readSpeed": 14500,
+    "writeSpeed": 12700,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1200,
+    "heatsink": true
+  },
+  {
+    "id": "storage-samsung-990pro-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "990 PRO 1TB",
+    "aliases": [
+      "990pro",
+      "990 PRO 1T"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 x4 高端，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7450,
+    "writeSpeed": 6900,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-990pro-2tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "990 PRO 2TB",
+    "aliases": [
+      "990pro2t",
+      "990 PRO 2T"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 x4 高端，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 4,
+    "readSpeed": 7450,
+    "writeSpeed": 6900,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1200,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn850x-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "黑盘 SN850X 1TB",
+    "aliases": [
+      "sn850x",
+      "SN850X 1T"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 x4 游戏旗舰，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7300,
+    "writeSpeed": 6300,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn850x-2tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "黑盘 SN850X 2TB",
+    "aliases": [
+      "sn850x2t",
+      "SN850X 2T"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 x4 游戏旗舰，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 4,
+    "readSpeed": 7300,
+    "writeSpeed": 6600,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 1200,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kioxia-pro-c10-1tb",
+    "category": "storage",
+    "brand": "铠侠",
+    "name": "PRO C10 1TB",
+    "aliases": [
+      "pro c10",
+      "kioxia c10"
+    ],
+    "year": 2024,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "铠侠 PCIe 4.0 x4 高端，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7000,
+    "writeSpeed": 6000,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-zhitai-tiplus7100-1tb",
+    "category": "storage",
+    "brand": "致态",
+    "name": "TiPlus7100 1TB",
+    "aliases": [
+      "tiplus7100",
+      "ti plus 7100",
+      "致态7100"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "长江存储 PCIe 4.0 主流型号，无独立 DRAM（HMB 借用系统内存）",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7000,
+    "writeSpeed": 6000,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-zhitai-tiplus7100-2tb",
+    "category": "storage",
+    "brand": "致态",
+    "name": "TiPlus7100 2TB",
+    "aliases": [
+      "tiplus71002t",
+      "ti plus 7100 2t"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "长江存储 PCIe 4.0 主流型号，无独立 DRAM（HMB）",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 4,
+    "readSpeed": 7000,
+    "writeSpeed": 6000,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 1200,
+    "heatsink": false
+  },
+  {
+    "id": "storage-zhi-tai-ti600-1tb",
+    "category": "storage",
+    "brand": "致态",
+    "name": "Ti600 1TB",
+    "aliases": [
+      "ti600",
+      "致态ti600"
+    ],
+    "year": 2023,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 4.0 入门 QLC，无独立 DRAM，做系统盘会有明显降级（W11 场景）",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7000,
+    "writeSpeed": 6000,
+    "nandType": "QLC",
+    "dram": false,
+    "tbw": 400,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kioxia-exceria-plus-g3-1tb",
+    "category": "storage",
+    "brand": "铠侠",
+    "name": "EXCERIA PLUS G3 1TB",
+    "aliases": [
+      "exceria plus g3",
+      "g3 plus"
+    ],
+    "year": 2023,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "PCIe 4.0 主流，无独立 DRAM 缓存的 TLC 型号",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 5000,
+    "writeSpeed": 3900,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-990evoplus-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "990 EVO Plus 1TB",
+    "aliases": [
+      "990evoplus",
+      "990 EVO+"
+    ],
+    "year": 2024,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 x4（亦支持 PCIe 5.0 x2），无独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 7150,
+    "writeSpeed": 6300,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn5000-2tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 SN5000 2TB",
+    "aliases": [
+      "sn5000",
+      "WD SN5000 2T"
+    ],
+    "year": 2024,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 QLC，无独立 DRAM 缓存，是 W11「QLC 做系统盘」的典型样本",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 2000,
+    "pcieVersion": 4,
+    "readSpeed": 5000,
+    "writeSpeed": 4400,
+    "nandType": "QLC",
+    "dram": false,
+    "tbw": 900,
+    "heatsink": false
+  },
+  {
+    "id": "storage-crucial-p3-plus-1000gb",
+    "category": "storage",
+    "brand": "英睿达",
+    "name": "P3 Plus 1TB",
+    "aliases": [
+      "p3plus",
+      "P3+"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 QLC，无独立 DRAM 缓存的低端系统性样本",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 4,
+    "readSpeed": 5000,
+    "writeSpeed": 3600,
+    "nandType": "QLC",
+    "dram": false,
+    "tbw": 220,
+    "heatsink": false
+  },
+  {
+    "id": "storage-crucial-p3-plus-500gb",
+    "category": "storage",
+    "brand": "英睿达",
+    "name": "P3 Plus 500GB",
+    "aliases": [
+      "p3plus500",
+      "P3+ 500G"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 4.0 QLC，无独立 DRAM 缓存，容量 500GB 入门款",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 500,
+    "pcieVersion": 4,
+    "readSpeed": 4700,
+    "writeSpeed": 1900,
+    "nandType": "QLC",
+    "dram": false,
+    "tbw": 110,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-970evo-plus-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "970 EVO Plus 1TB",
+    "aliases": [
+      "970evoplus",
+      "970 EVO+"
+    ],
+    "year": 2019,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 3.0 x4 老型号，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 3500,
+    "writeSpeed": 3300,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sn570-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 SN570 1TB",
+    "aliases": [
+      "sn570",
+      "WD SN570 1T"
+    ],
+    "year": 2021,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 3.0 x4 主流，无独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 3500,
+    "writeSpeed": 3000,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kioxia-rc20-500gb",
+    "category": "storage",
+    "brand": "铠侠",
+    "name": "RC20 500GB",
+    "aliases": [
+      "rc20",
+      "EXCERIA RC20"
+    ],
+    "year": 2021,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 3.0 x4 入门，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 500,
+    "pcieVersion": 3,
+    "readSpeed": 2100,
+    "writeSpeed": 1700,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 200,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kingston-a2000-1tb",
+    "category": "storage",
+    "brand": "金士顿",
+    "name": "A2000 1TB",
+    "aliases": [
+      "a2000",
+      "KC A2000"
+    ],
+    "year": 2019,
+    "condition": "new",
+    "estimated": [],
+    "notes": "PCIe 3.0 x4 老型号，带独立 DRAM 缓存",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "pcieVersion": 3,
+    "readSpeed": 2200,
+    "writeSpeed": 2000,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-pm981a-512gb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "PM981a 512GB",
+    "aliases": [
+      "pm981a",
+      "PM981a 512G"
+    ],
+    "year": 2019,
+    "condition": "used",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed",
+      "tbw"
+    ],
+    "notes": "OEM 拆机 PCIe 3.0 x4 型号，带独立 DRAM 缓存，无官方保修（二手/拆机）",
+    "interface": "NVMe",
+    "formFactor": "M.2 2280",
+    "capacity": 500,
+    "pcieVersion": 3,
+    "readSpeed": 3500,
+    "writeSpeed": 2900,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 300,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-870evo-1tb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "870 EVO 1TB",
+    "aliases": [
+      "870evo",
+      "870 EVO 1T"
+    ],
+    "year": 2021,
+    "condition": "new",
+    "estimated": [],
+    "notes": "2.5 英寸 SATA SSD，带独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 1000,
+    "readSpeed": 560,
+    "writeSpeed": 530,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 600,
+    "heatsink": false
+  },
+  {
+    "id": "storage-samsung-870evo-500gb",
+    "category": "storage",
+    "brand": "三星",
+    "name": "870 EVO 500GB",
+    "aliases": [
+      "870evo500",
+      "870 EVO 500G"
+    ],
+    "year": 2021,
+    "condition": "new",
+    "estimated": [],
+    "notes": "2.5 英寸 SATA SSD，带独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 500,
+    "readSpeed": 560,
+    "writeSpeed": 530,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 300,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-sa510-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "绿盘 SA510 1TB",
+    "aliases": [
+      "sa510",
+      "WD SA510 1T"
+    ],
+    "year": 2022,
+    "condition": "new",
+    "estimated": [],
+    "notes": "2.5 英寸 SATA SSD，无独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 1000,
+    "readSpeed": 560,
+    "writeSpeed": 520,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 400,
+    "heatsink": false
+  },
+  {
+    "id": "storage-kingston-a400-480gb",
+    "category": "storage",
+    "brand": "金士顿",
+    "name": "A400 480GB",
+    "aliases": [
+      "a400",
+      "Kingston A400",
+      "A400 480G"
+    ],
+    "year": 2017,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "2.5 英寸 SATA SSD 入门款，无独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 500,
+    "readSpeed": 500,
+    "writeSpeed": 450,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 160,
+    "heatsink": false
+  },
+  {
+    "id": "storage-crucial-mx500-2tb",
+    "category": "storage",
+    "brand": "英睿达",
+    "name": "MX500 2TB",
+    "aliases": [
+      "mx500",
+      "Crucial MX500 2T"
+    ],
+    "year": 2018,
+    "condition": "new",
+    "estimated": [],
+    "notes": "2.5 英寸 SATA SSD，带独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "2.5\"",
+    "capacity": 2000,
+    "readSpeed": 560,
+    "writeSpeed": 510,
+    "nandType": "TLC",
+    "dram": true,
+    "tbw": 700,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-blue3d-m2-1tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 3D NAND M.2 1TB (WDS100T2B0B)",
+    "aliases": [
+      "wd blue 3d m2",
+      "WDS100T2B0B",
+      "蓝盘m2 1t"
+    ],
+    "year": 2018,
+    "condition": "new",
+    "estimated": [
+      "tbw"
+    ],
+    "notes": "M.2 2280 SATA 协议固态硬盘（非 NVMe），无独立 DRAM 缓存",
+    "interface": "SATA",
+    "formFactor": "M.2 2280",
+    "capacity": 1000,
+    "readSpeed": 560,
+    "writeSpeed": 530,
+    "nandType": "TLC",
+    "dram": false,
+    "tbw": 500,
+    "heatsink": false
+  },
+  {
+    "id": "storage-seagate-st4000dm004-4tb",
+    "category": "storage",
+    "brand": "希捷",
+    "name": "酷鱼 4TB (ST4000DM004)",
+    "aliases": [
+      "st4000dm004",
+      "酷鱼4t"
+    ],
+    "year": 2018,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed"
+    ],
+    "notes": "机械硬盘（HDD），3.5 英寸 5400 转，SMR 叠瓦式磁记录；为满足必填字段填 SLC，实际无 NAND",
+    "interface": "SATA",
+    "formFactor": "3.5\"",
+    "capacity": 4000,
+    "readSpeed": 190,
+    "writeSpeed": 190,
+    "nandType": "SLC",
+    "dram": true,
+    "heatsink": false
+  },
+  {
+    "id": "storage-wd-wd40ezaz-4tb",
+    "category": "storage",
+    "brand": "西数",
+    "name": "蓝盘 4TB (WD40EZAZ)",
+    "aliases": [
+      "wd40ezaz",
+      "蓝盘4t"
+    ],
+    "year": 2020,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed"
+    ],
+    "notes": "机械硬盘（HDD），3.5 英寸 5400 转，SMR 叠瓦式磁记录；nandType 为占位值，实际无 NAND",
+    "interface": "SATA",
+    "formFactor": "3.5\"",
+    "capacity": 4000,
+    "readSpeed": 180,
+    "writeSpeed": 180,
+    "nandType": "SLC",
+    "dram": true,
+    "heatsink": false
+  },
+  {
+    "id": "storage-seagate-st8000dm004-8tb",
+    "category": "storage",
+    "brand": "希捷",
+    "name": "酷鱼 8TB (ST8000DM004)",
+    "aliases": [
+      "st8000dm004",
+      "酷鱼8t"
+    ],
+    "year": 2018,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed"
+    ],
+    "notes": "机械硬盘（HDD），3.5 英寸 5400 转大容量盘，SMR 叠瓦式磁记录；nandType 为占位值，实际无 NAND",
+    "interface": "SATA",
+    "formFactor": "3.5\"",
+    "capacity": 8000,
+    "readSpeed": 190,
+    "writeSpeed": 190,
+    "nandType": "SLC",
+    "dram": true,
+    "heatsink": false
+  },
+  {
+    "id": "storage-seagate-st16000nm001g-16tb",
+    "category": "storage",
+    "brand": "希捷",
+    "name": "Exos X16 16TB (ST16000NM001G)",
+    "aliases": [
+      "st16000nm001g",
+      "exos x16",
+      "银河16t"
+    ],
+    "year": 2019,
+    "condition": "new",
+    "estimated": [
+      "readSpeed",
+      "writeSpeed"
+    ],
+    "notes": "机械硬盘（HDD），3.5 英寸企业级氦气盘，CMR 传统垂直磁记录；nandType 为占位值，实际无 NAND",
+    "interface": "SATA",
+    "formFactor": "3.5\"",
+    "capacity": 16000,
+    "readSpeed": 260,
+    "writeSpeed": 250,
+    "nandType": "SLC",
+    "dram": true,
+    "heatsink": false
+  }
+]

@@ -1,0 +1,49 @@
+# 行尾策略
+#
+# 背景：本项目刻意混用两种行尾，不能用统一的 text=auto 处理，否则会破坏文件语义：
+#   · CSV 模板（csv-templates/*.csv）由脚本生成，刻意使用 BOM + CRLF，便于 Excel 直接双击打开
+#     —— 必须逐字节保留，故标记为 -text（视为二进制，git 不做任何转换）
+#   · 其余源码/数据/文档统一使用 LF
+#
+# 详见 tools/gen-csv-templates.mjs 与 csv-templates/README.md
+
+# 默认：文本文件在仓库内统一存 LF，检出时按平台还原
+* text=auto eol=lf
+
+# ── 必须逐字节保留的文件（BOM + CRLF）──────────────────────
+csv-templates/*.csv  -text
+*.xlsx               -text
+*.xls                -text
+
+# ── 明确的文本类型 ─────────────────────────────────────────
+*.js       text eol=lf
+*.mjs      text eol=lf
+*.json     text eol=lf
+*.css      text eol=lf
+*.html     text eol=lf
+*.md       text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+
+# .gitignore / .gitattributes 自身
+.gitignore      text eol=lf
+.gitattributes  text eol=lf
+
+# ── 二进制类型（避免 git 误判为文本而做 diff/转换）──────────
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary
+
+# ── 构建产物与生成文件的 diff 处理 ─────────────────────────
+# dist/装机助手.html 体积大且由构建生成，折叠 diff 减少噪音
+dist/*.html  -diff
+# schema/hardware.schema.json 由 schema/fields.js 生成，同样折叠
+schema/hardware.schema.json  -diff
+# 内联数据包由 data/*.json 生成，折叠 diff
+src/data/bundle.js  -diff
+
+# ── 语言统计（让 GitHub 等正确识别为主语言为 JS）────────────
+*.mjs  linguist-language=JavaScript

@@ -1,0 +1,1899 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local/zhuangji/hardware.schema.json",
+  "title": "装机助手 · 硬件数据规范",
+  "description": "本文件由 tools/gen-schema.mjs 从 schema/fields.js 自动生成，请勿手工编辑。唯一数据源是 schema/fields.js；实际校验逻辑在 tools/validate-data.mjs。",
+  "x-generated-by": "tools/gen-schema.mjs",
+  "x-source-of-truth": "schema/fields.js",
+  "x-categories": [
+    {
+      "key": "cpu",
+      "label": "CPU",
+      "file": "cpu.json",
+      "csvFile": "cpu.csv",
+      "minCount": 48,
+      "fieldCount": 29,
+      "requiredCount": 18
+    },
+    {
+      "key": "motherboard",
+      "label": "主板",
+      "file": "motherboard.json",
+      "csvFile": "motherboard.csv",
+      "minCount": 48,
+      "fieldCount": 28,
+      "requiredCount": 16
+    },
+    {
+      "key": "gpu",
+      "label": "显卡",
+      "file": "gpu.json",
+      "csvFile": "gpu.csv",
+      "minCount": 44,
+      "fieldCount": 26,
+      "requiredCount": 16
+    },
+    {
+      "key": "memory",
+      "label": "内存",
+      "file": "memory.json",
+      "csvFile": "memory.csv",
+      "minCount": 32,
+      "fieldCount": 20,
+      "requiredCount": 11
+    },
+    {
+      "key": "psu",
+      "label": "电源",
+      "file": "psu.json",
+      "csvFile": "psu.csv",
+      "minCount": 32,
+      "fieldCount": 21,
+      "requiredCount": 13
+    },
+    {
+      "key": "case",
+      "label": "机箱",
+      "file": "case.json",
+      "csvFile": "case.csv",
+      "minCount": 32,
+      "fieldCount": 23,
+      "requiredCount": 15
+    },
+    {
+      "key": "cooler",
+      "label": "散热器",
+      "file": "cooler.json",
+      "csvFile": "cooler.csv",
+      "minCount": 32,
+      "fieldCount": 20,
+      "requiredCount": 9
+    },
+    {
+      "key": "storage",
+      "label": "硬盘",
+      "file": "storage.json",
+      "csvFile": "storage.csv",
+      "minCount": 32,
+      "fieldCount": 20,
+      "requiredCount": 11
+    }
+  ],
+  "definitions": {
+    "commonFields": {
+      "title": "通用字段（所有品类共有）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "cpu",
+            "motherboard",
+            "gpu",
+            "memory",
+            "psu",
+            "cooler",
+            "case",
+            "storage"
+          ],
+          "title": "品类",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition"
+      ]
+    },
+    "enums": {
+      "category": [
+        "cpu",
+        "motherboard",
+        "gpu",
+        "memory",
+        "psu",
+        "cooler",
+        "case",
+        "storage"
+      ],
+      "socket": [
+        "AM4",
+        "AM5",
+        "LGA1200",
+        "LGA1700",
+        "LGA1851",
+        "LGA2011-3",
+        "LGA2066",
+        "LGA1151",
+        "LGA1150"
+      ],
+      "formFactor": [
+        "E-ATX",
+        "ATX",
+        "M-ATX",
+        "Mini-ITX"
+      ],
+      "memoryType": [
+        "DDR4",
+        "DDR5",
+        "DDR3"
+      ],
+      "psuFormFactor": [
+        "ATX",
+        "SFX",
+        "SFX-L",
+        "TFX"
+      ],
+      "coolerType": [
+        "air",
+        "aio"
+      ],
+      "radiatorSize": [
+        120,
+        240,
+        280,
+        360,
+        420
+      ],
+      "storageInterface": [
+        "NVMe",
+        "SATA"
+      ],
+      "storageFormFactor": [
+        "M.2 2280",
+        "M.2 2242",
+        "2.5\"",
+        "3.5\""
+      ],
+      "nandType": [
+        "TLC",
+        "QLC",
+        "MLC",
+        "SLC"
+      ],
+      "condition": [
+        "new",
+        "used",
+        "mining",
+        "oem"
+      ],
+      "level": [
+        "error",
+        "warn",
+        "info"
+      ],
+      "efficiency": [
+        "白牌",
+        "铜牌",
+        "银牌",
+        "金牌",
+        "白金牌",
+        "钛金牌",
+        "无认证"
+      ],
+      "modular": [
+        "全模组",
+        "半模组",
+        "非模组"
+      ],
+      "sidePanel": [
+        "钢化玻璃",
+        "网孔",
+        "钢板",
+        "亚克力"
+      ],
+      "pcieVersion": [
+        3,
+        4,
+        5
+      ]
+    },
+    "cpu": {
+      "title": "CPU（cpu）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "cpu",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "socket": {
+          "type": "string",
+          "enum": [
+            "AM4",
+            "AM5",
+            "LGA1200",
+            "LGA1700",
+            "LGA1851",
+            "LGA2011-3",
+            "LGA2066",
+            "LGA1151",
+            "LGA1150"
+          ],
+          "title": "插槽",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E1, E9"
+        },
+        "cores": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 128,
+          "title": "核心数"
+        },
+        "threads": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 256,
+          "title": "线程数"
+        },
+        "pCores": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64,
+          "title": "性能核数"
+        },
+        "eCores": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 64,
+          "title": "能效核数"
+        },
+        "baseClock": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 7,
+          "title": "基础频率",
+          "description": "单位: GHz"
+        },
+        "boostClock": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8,
+          "title": "加速频率",
+          "description": "单位: GHz"
+        },
+        "l3Cache": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 512,
+          "title": "三级缓存",
+          "description": "单位: MB"
+        },
+        "tdp": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 500,
+          "title": "标称功耗",
+          "description": "单位: W"
+        },
+        "maxPower": {
+          "type": "number",
+          "minimum": 5,
+          "maximum": 700,
+          "title": "峰值功耗",
+          "description": "单位: W；【关键字段】必须精确，不允许近似；参与规则: E10, W2, W10；PPT/PL2，功耗预算必须用它而非 tdp"
+        },
+        "memoryTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "DDR4",
+              "DDR5",
+              "DDR3"
+            ]
+          },
+          "minItems": 1,
+          "title": "支持内存代数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E3"
+        },
+        "maxMemorySpeed": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 12000,
+          "title": "官方内存频率上限",
+          "description": "单位: MT/s；【关键字段】必须精确，不允许近似；参与规则: W4"
+        },
+        "memoryChannels": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8,
+          "title": "内存通道数"
+        },
+        "igpu": {
+          "type": "boolean",
+          "title": "是否带核显",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E16"
+        },
+        "igpuName": {
+          "type": "string",
+          "title": "核显型号"
+        },
+        "pcieVersion": {
+          "type": "number",
+          "enum": [
+            3,
+            4,
+            5
+          ],
+          "title": "PCIe 版本"
+        },
+        "unlocked": {
+          "type": "boolean",
+          "title": "是否可超频"
+        },
+        "gameScore": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 300,
+          "title": "游戏性能分",
+          "description": "以 R7 7800X3D = 100 为基准"
+        },
+        "productivityScore": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 400,
+          "title": "生产力性能分",
+          "description": "同基准换算"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "socket",
+        "cores",
+        "threads",
+        "baseClock",
+        "boostClock",
+        "tdp",
+        "maxPower",
+        "memoryTypes",
+        "maxMemorySpeed",
+        "igpu",
+        "gameScore",
+        "productivityScore"
+      ],
+      "additionalProperties": false
+    },
+    "motherboard": {
+      "title": "主板（motherboard）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "motherboard",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "socket": {
+          "type": "string",
+          "enum": [
+            "AM4",
+            "AM5",
+            "LGA1200",
+            "LGA1700",
+            "LGA1851",
+            "LGA2011-3",
+            "LGA2066",
+            "LGA1151",
+            "LGA1150"
+          ],
+          "title": "插槽",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E1"
+        },
+        "chipset": {
+          "type": "string",
+          "title": "芯片组",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W5"
+        },
+        "formFactor": {
+          "type": "string",
+          "enum": [
+            "E-ATX",
+            "ATX",
+            "M-ATX",
+            "Mini-ITX"
+          ],
+          "title": "板型",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E4"
+        },
+        "memoryType": {
+          "type": "string",
+          "enum": [
+            "DDR4",
+            "DDR5",
+            "DDR3"
+          ],
+          "title": "内存代数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E2, E3"
+        },
+        "memorySlots": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8,
+          "title": "内存槽数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E17"
+        },
+        "maxMemory": {
+          "type": "number",
+          "minimum": 16,
+          "maximum": 512,
+          "title": "最大内存容量",
+          "description": "单位: GB"
+        },
+        "maxMemorySpeed": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 12000,
+          "title": "内存频率上限",
+          "description": "单位: MT/s；【关键字段】必须精确，不允许近似；参与规则: W3"
+        },
+        "pcieVersion": {
+          "type": "number",
+          "enum": [
+            3,
+            4,
+            5
+          ],
+          "title": "PCIe 版本",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W6"
+        },
+        "pcieX16Slots": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4,
+          "title": "PCIe x16 槽数"
+        },
+        "m2Slots": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 6,
+          "title": "M.2 接口数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E15"
+        },
+        "sataPorts": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12,
+          "title": "SATA 接口数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E15"
+        },
+        "cpuPowerConnectors": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "title": "CPU 供电 8pin 数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E12；按 8pin 等效数量计，4pin 计 0.5 时取整"
+        },
+        "vrmPhases": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 30,
+          "title": "供电相数",
+          "description": "参与规则: W10"
+        },
+        "wifi": {
+          "type": "boolean",
+          "title": "是否带 WiFi"
+        },
+        "usbC": {
+          "type": "boolean",
+          "title": "是否带 USB-C"
+        },
+        "length_mm": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 400,
+          "title": "长度",
+          "description": "单位: mm"
+        },
+        "width_mm": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 400,
+          "title": "宽度",
+          "description": "单位: mm"
+        },
+        "biosFlashback": {
+          "type": "boolean",
+          "title": "支持无 CPU 刷 BIOS"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "socket",
+        "chipset",
+        "formFactor",
+        "memoryType",
+        "memorySlots",
+        "maxMemorySpeed",
+        "pcieVersion",
+        "m2Slots",
+        "sataPorts",
+        "cpuPowerConnectors"
+      ],
+      "additionalProperties": false
+    },
+    "gpu": {
+      "title": "显卡（gpu）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "gpu",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "chipset": {
+          "type": "string",
+          "title": "显示芯片",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "vram": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 48,
+          "title": "显存容量",
+          "description": "单位: GB；【关键字段】必须精确，不允许近似"
+        },
+        "memoryType": {
+          "type": "string",
+          "title": "显存类型"
+        },
+        "busWidth": {
+          "type": "number",
+          "minimum": 32,
+          "maximum": 1024,
+          "title": "显存位宽",
+          "description": "单位: bit"
+        },
+        "length_mm": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 400,
+          "title": "显卡长度",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E5"
+        },
+        "thicknessSlots": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "title": "显卡厚度",
+          "description": "单位: 槽；【关键字段】必须精确，不允许近似；参与规则: E6"
+        },
+        "height_mm": {
+          "type": "number",
+          "minimum": 80,
+          "maximum": 200,
+          "title": "显卡高度",
+          "description": "单位: mm"
+        },
+        "tdp": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 600,
+          "title": "功耗",
+          "description": "单位: W；【关键字段】必须精确，不允许近似；参与规则: E10"
+        },
+        "recommendedPsu": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 1600,
+          "title": "建议电源",
+          "description": "单位: W"
+        },
+        "pcie8pin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4,
+          "title": "8pin 供电口数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E11"
+        },
+        "pcie12vhpwr": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "title": "12VHPWR 口数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E11"
+        },
+        "pcieVersion": {
+          "type": "number",
+          "enum": [
+            3,
+            4,
+            5
+          ],
+          "title": "PCIe 版本",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W6"
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "输出接口"
+        },
+        "gameScore": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 400,
+          "title": "游戏性能分",
+          "description": "以 R7 7800X3D = 100 为同基准"
+        },
+        "productivityScore": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 600,
+          "title": "生产力性能分"
+        },
+        "coolerType": {
+          "type": "string",
+          "title": "散热形式"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "chipset",
+        "vram",
+        "length_mm",
+        "thicknessSlots",
+        "tdp",
+        "pcie8pin",
+        "pcie12vhpwr",
+        "pcieVersion",
+        "gameScore",
+        "productivityScore"
+      ],
+      "additionalProperties": false
+    },
+    "memory": {
+      "title": "内存（memory）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "memory",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "memoryType": {
+          "type": "string",
+          "enum": [
+            "DDR4",
+            "DDR5",
+            "DDR3"
+          ],
+          "title": "内存代数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E2"
+        },
+        "capacityPerModule": {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 128,
+          "title": "单条容量",
+          "description": "单位: GB；【关键字段】必须精确，不允许近似"
+        },
+        "modules": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 8,
+          "title": "套装条数",
+          "description": "单位: 条；【关键字段】必须精确，不允许近似；参与规则: E17, W7"
+        },
+        "speed": {
+          "type": "number",
+          "minimum": 1000,
+          "maximum": 12000,
+          "title": "频率",
+          "description": "单位: MT/s；【关键字段】必须精确，不允许近似；参与规则: W3, W4"
+        },
+        "casLatency": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 60,
+          "title": "CAS 时序"
+        },
+        "voltage": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 1.6,
+          "title": "电压",
+          "description": "单位: V"
+        },
+        "height_mm": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 80,
+          "title": "内存高度",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: W9"
+        },
+        "ecc": {
+          "type": "boolean",
+          "title": "是否 ECC"
+        },
+        "rgb": {
+          "type": "boolean",
+          "title": "是否带灯"
+        },
+        "xmpSupport": {
+          "type": "string",
+          "title": "XMP/EXPO 支持"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "memoryType",
+        "capacityPerModule",
+        "modules",
+        "speed",
+        "height_mm"
+      ],
+      "additionalProperties": false
+    },
+    "psu": {
+      "title": "电源（psu）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "psu",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "wattage": {
+          "type": "number",
+          "minimum": 200,
+          "maximum": 2000,
+          "title": "额定瓦数",
+          "description": "单位: W；【关键字段】必须精确，不允许近似；参与规则: E10, W1, I1"
+        },
+        "formFactor": {
+          "type": "string",
+          "enum": [
+            "ATX",
+            "SFX",
+            "SFX-L",
+            "TFX"
+          ],
+          "title": "电源规格",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E13"
+        },
+        "length_mm": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 250,
+          "title": "电源长度",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E14"
+        },
+        "pcie8pin": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 10,
+          "title": "PCIe 8pin 数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E11"
+        },
+        "pcie12vhpwr": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "title": "12VHPWR 数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E11"
+        },
+        "eps8pin": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 3,
+          "title": "CPU 8pin 数",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E12"
+        },
+        "efficiency": {
+          "type": "string",
+          "enum": [
+            "白牌",
+            "铜牌",
+            "银牌",
+            "金牌",
+            "白金牌",
+            "钛金牌",
+            "无认证"
+          ],
+          "title": "80PLUS 认证"
+        },
+        "modular": {
+          "type": "string",
+          "enum": [
+            "全模组",
+            "半模组",
+            "非模组"
+          ],
+          "title": "模组化"
+        },
+        "atxVersion": {
+          "type": "string",
+          "title": "ATX 版本"
+        },
+        "sataConnectors": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 16,
+          "title": "SATA 供电口数"
+        },
+        "warranty": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 15,
+          "title": "保修",
+          "description": "单位: 年"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "wattage",
+        "formFactor",
+        "length_mm",
+        "pcie8pin",
+        "pcie12vhpwr",
+        "eps8pin",
+        "efficiency"
+      ],
+      "additionalProperties": false
+    },
+    "case": {
+      "title": "机箱（case）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "case",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "formFactors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "E-ATX",
+              "ATX",
+              "M-ATX",
+              "Mini-ITX"
+            ]
+          },
+          "minItems": 1,
+          "title": "支持板型",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E4"
+        },
+        "maxGpuLength": {
+          "type": "number",
+          "minimum": 150,
+          "maximum": 600,
+          "title": "显卡限长",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E5"
+        },
+        "maxGpuThickness": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 5,
+          "title": "显卡限厚",
+          "description": "单位: 槽；【关键字段】必须精确，不允许近似；参与规则: E6"
+        },
+        "maxCoolerHeight": {
+          "type": "number",
+          "minimum": 40,
+          "maximum": 250,
+          "title": "风冷限高",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E7"
+        },
+        "radiatorSupport": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "enum": [
+              120,
+              240,
+              280,
+              360,
+              420
+            ]
+          },
+          "title": "支持冷排",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E8；无冷排位填空数组"
+        },
+        "psuFormFactors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "ATX",
+              "SFX",
+              "SFX-L",
+              "TFX"
+            ]
+          },
+          "minItems": 1,
+          "title": "支持电源规格",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E13"
+        },
+        "maxPsuLength": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 300,
+          "title": "电源限长",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E14"
+        },
+        "expansionSlots": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 10,
+          "title": "扩展槽数",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "driveBays35": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12,
+          "title": "3.5 寸硬盘位"
+        },
+        "driveBays25": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 12,
+          "title": "2.5 寸硬盘位"
+        },
+        "fanMounts": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 14,
+          "title": "风扇位数量",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W8"
+        },
+        "sidePanel": {
+          "type": "string",
+          "enum": [
+            "钢化玻璃",
+            "网孔",
+            "钢板",
+            "亚克力"
+          ],
+          "title": "侧板"
+        },
+        "volume": {
+          "type": "number",
+          "minimum": 3,
+          "maximum": 120,
+          "title": "体积",
+          "description": "单位: L"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "formFactors",
+        "maxGpuLength",
+        "maxGpuThickness",
+        "maxCoolerHeight",
+        "radiatorSupport",
+        "psuFormFactors",
+        "maxPsuLength",
+        "expansionSlots",
+        "fanMounts"
+      ],
+      "additionalProperties": false
+    },
+    "cooler": {
+      "title": "散热器（cooler）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "cooler",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "air",
+            "aio"
+          ],
+          "title": "类型",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E7, E8, W9"
+        },
+        "height_mm": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 250,
+          "title": "风冷高度",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E7；条件必填: 当 type = air"
+        },
+        "radiatorSize": {
+          "type": "number",
+          "enum": [
+            120,
+            240,
+            280,
+            360,
+            420
+          ],
+          "title": "冷排规格",
+          "description": "单位: mm；【关键字段】必须精确，不允许近似；参与规则: E8；条件必填: 当 type = aio"
+        },
+        "tdpRating": {
+          "type": "number",
+          "minimum": 30,
+          "maximum": 600,
+          "title": "散热能力",
+          "description": "单位: W；【关键字段】必须精确，不允许近似；参与规则: W2"
+        },
+        "sockets": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "AM4",
+              "AM5",
+              "LGA1200",
+              "LGA1700",
+              "LGA1851",
+              "LGA2011-3",
+              "LGA2066",
+              "LGA1151",
+              "LGA1150"
+            ]
+          },
+          "minItems": 1,
+          "title": "支持插槽",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E9"
+        },
+        "ramClearance_mm": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 100,
+          "title": "内存避让高度",
+          "description": "单位: mm；参与规则: W9"
+        },
+        "fanCount": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 6,
+          "title": "风扇数"
+        },
+        "noise_dba": {
+          "type": "number",
+          "minimum": 10,
+          "maximum": 60,
+          "title": "噪声",
+          "description": "单位: dBA；近似值"
+        },
+        "rgb": {
+          "type": "boolean",
+          "title": "是否带灯"
+        },
+        "thickness_mm": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 60,
+          "title": "冷排厚度",
+          "description": "单位: mm"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "type",
+        "tdpRating",
+        "sockets"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "air"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "height_mm"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "aio"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "radiatorSize"
+            ]
+          }
+        }
+      ]
+    },
+    "storage": {
+      "title": "硬盘（storage）",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "唯一标识",
+          "description": "【关键字段】必须精确，不允许近似；格式 {category}-{brand}-{model}，全库唯一"
+        },
+        "category": {
+          "type": "string",
+          "const": "storage",
+          "title": "品类"
+        },
+        "brand": {
+          "type": "string",
+          "title": "品牌",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "name": {
+          "type": "string",
+          "title": "完整型号名",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "aliases": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "别名/简称",
+          "description": "至少 1 个，含常见简称（如 7800x3d、4070S、小雕）"
+        },
+        "price": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 200000,
+          "title": "参考价",
+          "description": "单位: 元；【P1 预留】本期不读取；P1 预留字段：本期界面不展示、不参与计算与校验（见 PRD 1.5）"
+        },
+        "year": {
+          "type": "number",
+          "minimum": 2008,
+          "maximum": 2030,
+          "title": "发布时间",
+          "description": "单位: 年"
+        },
+        "condition": {
+          "type": "string",
+          "enum": [
+            "new",
+            "used",
+            "mining",
+            "oem"
+          ],
+          "title": "新旧状态",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "estimated": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "title": "近似字段",
+          "description": "本记录中哪些字段是近似值（PRD 3.1.3），界面以 ≈ 呈现"
+        },
+        "notes": {
+          "type": "string",
+          "title": "备注"
+        },
+        "interface": {
+          "type": "string",
+          "enum": [
+            "NVMe",
+            "SATA"
+          ],
+          "title": "接口",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: E15"
+        },
+        "formFactor": {
+          "type": "string",
+          "enum": [
+            "M.2 2280",
+            "M.2 2242",
+            "2.5\"",
+            "3.5\""
+          ],
+          "title": "规格",
+          "description": "【关键字段】必须精确，不允许近似"
+        },
+        "capacity": {
+          "type": "number",
+          "minimum": 120,
+          "maximum": 30000,
+          "title": "容量",
+          "description": "单位: GB；【关键字段】必须精确，不允许近似"
+        },
+        "pcieVersion": {
+          "type": "number",
+          "enum": [
+            3,
+            4,
+            5
+          ],
+          "title": "PCIe 代数",
+          "description": "NVMe 必填；条件必填: 当 interface = NVMe"
+        },
+        "readSpeed": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 16000,
+          "title": "顺序读取",
+          "description": "单位: MB/s"
+        },
+        "writeSpeed": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 16000,
+          "title": "顺序写入",
+          "description": "单位: MB/s"
+        },
+        "nandType": {
+          "type": "string",
+          "enum": [
+            "TLC",
+            "QLC",
+            "MLC",
+            "SLC"
+          ],
+          "title": "NAND 类型",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W11"
+        },
+        "dram": {
+          "type": "boolean",
+          "title": "有无独立缓存",
+          "description": "【关键字段】必须精确，不允许近似；参与规则: W11"
+        },
+        "tbw": {
+          "type": "number",
+          "minimum": 20,
+          "maximum": 20000,
+          "title": "写入寿命",
+          "description": "单位: TBW"
+        },
+        "heatsink": {
+          "type": "boolean",
+          "title": "是否带散热片"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "brand",
+        "name",
+        "aliases",
+        "condition",
+        "interface",
+        "formFactor",
+        "capacity",
+        "nandType",
+        "dram"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "interface": {
+                "const": "NVMe"
+              }
+            },
+            "required": [
+              "interface"
+            ]
+          },
+          "then": {
+            "required": [
+              "pcieVersion"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/cpu"
+    },
+    {
+      "$ref": "#/definitions/motherboard"
+    },
+    {
+      "$ref": "#/definitions/gpu"
+    },
+    {
+      "$ref": "#/definitions/memory"
+    },
+    {
+      "$ref": "#/definitions/psu"
+    },
+    {
+      "$ref": "#/definitions/case"
+    },
+    {
+      "$ref": "#/definitions/cooler"
+    },
+    {
+      "$ref": "#/definitions/storage"
+    }
+  ]
+}
