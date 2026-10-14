@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
+import { parseTestCounts } from './parse-test-output.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const NODE = process.execPath;
@@ -77,16 +78,21 @@ if (!skipTests) {
     const out = execFileSync(NODE, ['--test', ...files], {
       cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
     });
-    const pass = (out.match(/^ℹ pass (\d+)/m) || [])[1];
-    const fail = (out.match(/^ℹ fail (\d+)/m) || [])[1];
-    if (Number(fail) > 0) {
+    const counts = parseTestCounts(out);
+    if (counts === null) {
+      // 解析不到计数 = Node 的汇总格式变了：必须显式失败，绝不能静默当作通过
+      console.log('❌');
+      console.log(`         无法从测试输出解析通过/失败计数（当前 Node ${process.version}，汇总行格式可能已变化）`);
+      failed++;
+      results.push({ name: '全量测试', ok: false });
+    } else if (counts.fail > 0) {
       console.log('❌');
       console.log(out.split('\n').filter((l) => /✖|fail/.test(l)).slice(0, 20).map((l) => `         ${l}`).join('\n'));
       failed++;
       results.push({ name: '全量测试', ok: false });
     } else {
-      console.log(`✅  ${pass} 项通过`);
-      results.push({ name: '全量测试', ok: true, pass: Number(pass) });
+      console.log(`✅  ${counts.pass} 项通过`);
+      results.push({ name: '全量测试', ok: true, pass: counts.pass });
     }
   } catch (e) {
     console.log('❌');

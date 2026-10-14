@@ -5,7 +5,7 @@
 双击 `dist/装机助手.html` 即用 —— 无需安装、无需联网、无外部依赖。
 
 ```
-8 大品类 · 716 个硬件型号 · 32 条兼容性规则 · 493 项测试 · 零依赖
+8 大品类 · 716 个硬件型号 · 32 条兼容性规则 · 500 项测试 · 零依赖
 ```
 
 ---
@@ -110,7 +110,7 @@ src/ui/
   export.js                导出（含自写的零依赖 xlsx 写入器）
 
 tools/                   构建、校验、门禁、数据管线脚本
-tests/                   493 项测试
+tests/                   500 项测试
 ```
 
 ---
@@ -140,7 +140,7 @@ tests/                   493 项测试
 
 ```bash
 node tools/gate.mjs               # 全部门禁（推荐）
-node --test tests/*.test.mjs      # 493 项测试
+node --test tests/*.test.mjs      # 500 项测试
 node tools/validate-data.mjs      # 数据校验
 node tools/check-no-price.mjs     # 无价格门禁（A15）
 ```
