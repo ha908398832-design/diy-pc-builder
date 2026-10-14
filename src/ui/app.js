@@ -342,7 +342,10 @@ function bindEvents() {
     // 芯片行：多版本则展开/收起，单版本直接选中
     if (t.dataset.chipToggle || t.dataset.chip) {
       const key = t.dataset.chipToggle || t.dataset.chip;
-      const groups = groupByChipset(s.ui.category, visibleList(indexAll(), derive().resolved).items);
+      // 注意：这里必须用 store.state，不能用 render() 里的局部变量 s
+      // （事件处理器在 bindEvents 闭包中，拿不到 render 的局部作用域）
+      const cat = store.state.ui.category;
+      const groups = groupByChipset(cat, visibleList(indexAll(), derive().resolved).items);
       const g = groups.find((x) => x.key === key);
 
       if (!g) return;
