@@ -10,7 +10,8 @@ import assert from 'node:assert/strict';
 
 import {
   groupByChipset, isGrouped, groupKeyOf, inferVariants, variantsOf,
-  fieldRange, formatRange, isSingleVariant, groupSummary, VARIANTS,
+  inferMotherboardVariants, fieldRange, formatRange, isSingleVariant,
+  groupSummary, VARIANTS,
 } from '../src/core/grouping.js';
 import { checkCompatibility } from '../src/core/rules.js';
 
@@ -223,7 +224,90 @@ test('关键：芯片行的功耗取组内最大供电需求（最挑电源的�
 });
 
 // ══════════════════════════════════════════════════════════════════
-// 4. 展示辅助
+// 4. 主板专属：按「芯片组 + 板型」分组，形态按板型判定
+// ══════════════════════════════════════════════════════════════════
+
+const B650 = [
+  { id: 'mb-1', category: 'motherboard', brand: '技嘉', chipset: 'B650', name: 'B650I AORUS ULTRA',
+    formFactor: 'Mini-ITX', socket: 'AM5', memoryType: 'DDR5', length_mm: 170, condition: 'new' },
+  { id: 'mb-2', category: 'motherboard', brand: '华擎', chipset: 'B650', name: 'B650M PG Riptide',
+    formFactor: 'M-ATX', socket: 'AM5', memoryType: 'DDR5', length_mm: 244, condition: 'new' },
+  { id: 'mb-3', category: 'motherboard', brand: '微星', chipset: 'B650', name: 'MAG B650 TOMAHAWK',
+    formFactor: 'ATX', socket: 'AM5', memoryType: 'DDR5', length_mm: 305, condition: 'new' },
+  { id: 'mb-4', category: 'motherboard', brand: '华硕', chipset: 'X670E', name: 'TUF X670E',
+    formFactor: 'ATX', socket: 'AM5', memoryType: 'DDR5', length_mm: 305, condition: 'new' },
+  { id: 'mb-5', category: 'motherboard', brand: '技嘉', chipset: 'X670E', name: 'X670E AORUS',
+    formFactor: 'E-ATX', socket: 'AM5', memoryType: 'DDR5', length_mm: 305, condition: 'new' },
+];
+
+test('主板：按「芯片组 + 板型」分组（不同板型不混在一组）', () => {
+  const gs = groupByChipset('motherboard', B650);
+  const keys = gs.map((g) => g.key).sort();
+
+  assert.deepEqual(keys, ['B650·ATX', 'B650·M-ATX', 'B650·Mini-ITX', 'X670E·ATX', 'X670E·E-ATX'],
+    'Mini-ITX / M-ATX / ATX / E-ATX 必须分组开，因为对应不同机箱');
+
+  // 关键回归：ITX 板不能和 ATX 板混在一起
+  const miniItx = gs.find((g) => g.key === 'B650·Mini-ITX');
+  assert.equal(miniItx.count, 1, 'B650 Mini-ITX 应只含 ITX 板');
+  assert.equal(miniItx.records[0].id, 'mb-1');
+});
+
+test('主板：形态标签按板型而非板长（回归：曾误用显卡长度阈值）', () => {
+  const gs = groupByChipset('motherboard', B650);
+
+  const miniItx = gs.find((g) => g.key === 'B650·Mini-ITX');
+  assert.deepEqual(miniItx.variants, ['Mini-ITX'],
+    `ITX 板应标 Mini-ITX，实际 ${miniItx.variants}`);
+
+  const matx = gs.find((g) => g.key === 'B650·M-ATX');
+  assert.deepEqual(matx.variants, ['M-ATX'], '应标 M-ATX');
+
+  const atx = gs.find((g) => g.key === 'B650·ATX');
+  assert.deepEqual(atx.variants, ['ATX'], '应标 ATX');
+
+  const eATX = gs.find((g) => g.key === 'X670E·E-ATX');
+  assert.deepEqual(eATX.variants, ['E-ATX'], '应标 E-ATX');
+});
+
+test('主板：inferMotherboardVariants 缺板型时不臆测', () => {
+  assert.deepEqual(inferMotherboardVariants({ formFactor: 'M-ATX', length_mm: 244 }), ['M-ATX']);
+  assert.deepEqual(inferMotherboardVariants({ formFactor: 'ATX', length_mm: 305 }), ['ATX']);
+  // 缺 formFactor → 标「未知板型」，**不按板长臆测**
+  // （按板长臆测会与 groupByChipset 的分组键不一致）
+  assert.deepEqual(inferMotherboardVariants({ length_mm: 170 }), ['未知板型']);
+  assert.deepEqual(inferMotherboardVariants({ length_mm: 244 }), ['未知板型']);
+  assert.deepEqual(inferMotherboardVariants({}), ['未知板型']);
+});
+
+test('主板：variantsOf 按品类分派（显卡用长度阈值，主板用板型）', () => {
+  // 358mm 在显卡口径下是长卡；同样长度的主板口径按板型判定
+  const longCard = { formFactor: 'ATX', length_mm: 358, thicknessSlots: 3.5 };
+  assert.ok(inferVariants(longCard).includes('长卡'), '显卡口径：358mm → 长卡');
+  assert.deepEqual(variantsOf(longCard, 'motherboard'), ['ATX'], '主板口径：按板型 → ATX');
+  assert.ok(variantsOf(longCard, 'gpu').includes('长卡'), '显卡口径仍按长度');
+});
+
+test('主板：组内保留插槽与内存代数（兼容性关键）', () => {
+  const g = groupByChipset('motherboard', B650).find((x) => x.key === 'B650·ATX');
+  assert.equal(g.socket, 'AM5', '应带插槽');
+  assert.equal(g.memoryType, 'DDR5', '应带内存代数');
+  assert.equal(g.formFactor, 'ATX', '应带板型');
+});
+
+test('主板：缺 formFactor 时归入「未知板型」而不是混在一起', () => {
+  const list = [
+    { id: 'm1', category: 'motherboard', chipset: 'B760', name: 'A', condition: 'new', length_mm: 244 },
+    { id: 'm2', category: 'motherboard', chipset: 'B760', name: 'B', condition: 'new', length_mm: 244 },
+  ];
+  const gs = groupByChipset('motherboard', list);
+  assert.equal(gs.length, 1, '同芯片组缺板型时仍归为一组');
+  assert.equal(gs[0].key, 'B760·未知板型');
+  assert.deepEqual(gs[0].variants, ['未知板型']);
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 5. 展示辅助
 // ══════════════════════════════════════════════════════════════════
 
 test('展示：摘要包含尺寸与版本数', () => {

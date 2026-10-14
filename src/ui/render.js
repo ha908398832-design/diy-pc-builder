@@ -13,7 +13,7 @@ import {
   COOLER_TYPE_LABELS, LEVEL_LABELS, LEVEL_ICONS,
 } from '../core/enums.js';
 import { FILTER_DEFS, SORT_DEFS, conditionLabel } from '../core/search.js';
-import { groupByChipset, isGrouped, formatRange, isSingleVariant } from '../core/grouping.js';
+import { groupByChipset, isGrouped, formatRange, isSingleVariant, variantsOf } from '../core/grouping.js';
 
 // ══════════════════════════════════════════════════════════════════
 // 基础工具
@@ -442,6 +442,29 @@ export function cellValue(rec, col) {
  * @param {function} o.isSelected     (rec) => boolean
  * @param {Array}  o.compareIds      勾选对比的记录 id
  */
+/** 芯片组表格的列定义：按品类给不同的芯片级列 */
+function chipTableColumns(category) {
+  if (category === 'motherboard') {
+    // 芯片行标签形如「B650·M-ATX」，板型已包含在内，故不重复"板型"列
+    return [
+      { key: 'chipset', label: '芯片组 · 板型', main: true },
+      { key: 'socket', label: '插槽' },
+      { key: 'memoryType', label: '内存' },
+      { key: 'm2Slots', label: 'M.2', num: true },
+      { key: 'sataPorts', label: 'SATA', num: true },
+    ];
+  }
+  // 显卡（默认）
+  return [
+    { key: 'chipset', label: '芯片型号', main: true },
+    { key: 'vram', label: '显存', num: true },
+    { key: 'length_mm', label: '长度', num: true },
+    { key: 'thicknessSlots', label: '厚度', num: true },
+    { key: 'tdp', label: '功耗', num: true },
+    { key: 'gameScore', label: '游戏分', num: true },
+  ];
+}
+
 /**
  * 芯片组表格（PRD 3.1.2b）
  *
@@ -461,22 +484,22 @@ export function cellValue(rec, col) {
 export function renderChipTable({
   category, groups = [], checkCandidate, isSelected, expandedKey = null,
 }) {
+  const isMb = category === 'motherboard';
+  // 主板：芯片行标签已含板型（B650·M-ATX），不再单列"形态"，
+  // 也不重复显示"板型"列；显卡则相反（芯片行不含形态信息）
+  const cols = chipTableColumns(category);
+  const head = cols
+    .map((c) => `<th${c.num ? ' class="num"' : ''}>${esc(c.label)}</th>`)
+    .join('');
+  const showVariantCol = !isMb;   // 显卡才需要独立的形态标签列
+
   if (groups.length === 0) {
     return `
       <table class="hw-table chip-table">
-        <thead><tr>
-          <th class="pick"></th><th>芯片型号</th><th>形态</th>
-          <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
-          <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>
-        </tr></thead>
+        <thead><tr><th class="pick"></th>${head}<th class="ops">操作</th></tr></thead>
       </table>
       <div class="empty-hint">没有匹配的型号。试试清空搜索或关掉筛选。</div>`;
   }
-
-  const head = `
-    <th class="pick"></th><th>芯片型号</th><th>形态</th>
-    <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
-    <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>`;
 
   const rows = groups.map((g) => {
     const expanded = expandedKey === g.key;
@@ -507,17 +530,25 @@ export function renderChipTable({
         ${selectedVariant ? `<span class="badge">已选：${esc(selectedVariant.brand || selectedVariant.name.slice(0, 12))}</span>` : ''}
       </td>`;
 
+    // 芯片级参数列
+    const paramCells = isMb
+      ? `<td>${esc(g.socket || '—')}</td>
+         <td>${esc(g.memoryType || '—')}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'm2Slots' }))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'sataPorts' }))}</td>`
+      : `<td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
+         <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
+         <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>`;
+
     const row = `
       <tr class="chip-row${worst === 'ok' ? '' : ' is-conflict'}" data-level="${esc(worst)}"
           ${selectedVariant ? ' data-has-selected="1"' : ''}>
         <td class="pick"><input type="checkbox" disabled></td>
         ${chipCell}
-        <td class="chip-variants">${variantTags}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
-        <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
-        <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>
+        ${showVariantCol ? `<td class="chip-variants">${variantTags}</td>` : ''}
+        ${paramCells}
         <td class="ops">
           ${g.count > 1
             ? `<button type="button" class="btn-pick" data-chip-toggle="${esc(g.key)}">展开</button>`
@@ -534,6 +565,21 @@ export function renderChipTable({
       const conflict = ck.level === 'error' || ck.level === 'warn';
       const rApprox = Array.isArray(r.estimated) && r.estimated.includes('length_mm') ? '≈' : '';
       const cond = conditionLabel(r.condition);
+      // 变体行：主板显示插槽/内存，显卡显示长度/厚度
+      const specCells = isMb
+        ? `<td>${esc(r.socket || '—')}</td>
+           <td>${esc(r.memoryType || '—')}</td>
+           <td class="num">${esc(cellValue(r, { key: 'm2Slots' }))}</td>
+           <td class="num">${esc(cellValue(r, { key: 'sataPorts' }))}</td>`
+        : `<td class="variant-specs">
+             <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
+             <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
+           </td>
+           <td class="num">${esc(r.vram ?? '—')}</td>
+           <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
+           <td class="num"></td>
+           <td class="num"></td>`;
+
       return `
         <tr class="variant-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}"
             data-level="${esc(ck.level)}" data-variant-of="${esc(g.key)}">
@@ -545,15 +591,8 @@ export function renderChipTable({
             ${r.custom ? '<span class="badge badge-custom">自定义</span>' : ''}
             ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '存在兼容问题')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
           </td>
-          <td class="variant-specs">
-            <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
-            <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
-          </td>
-          <td class="num">${esc(r.vram ?? '—')}</td>
-          <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
-          <td class="num"></td>
-          <td class="num"></td>
-          <td class="num"></td>
+          ${showVariantCol ? `<td class="chip-variants">${variantsOf(r, category).map((v) => `<span class="vtag vtag-${esc(v)}">${esc(v)}</span>`).join('')}</td>` : ''}
+          ${specCells}
           <td class="ops">
             <button type="button" class="btn-pick" data-pick="${esc(r.id)}">${sel ? '已选' : '选它'}</button>
           </td>
@@ -565,7 +604,7 @@ export function renderChipTable({
 
   return `
     <table class="hw-table chip-table">
-      <thead><tr>${head}</tr></thead>
+      <thead><tr><th class="pick"></th>${head}<th class="ops">操作</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }

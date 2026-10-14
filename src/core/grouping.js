@@ -34,11 +34,25 @@ export function groupKeyOf(category) {
 // 形态判定
 // ══════════════════════════════════════════════════════════════════
 
-/** 形态枚举（写入数据的 variant 字段时也用这些值） */
+/**
+ * 形态标签的**声明顺序**（用于组内去重后排序，保证展示稳定）
+ *
+ * 显卡形态：ITX / 单风扇 / 单槽薄 / 标准 / 长卡 / 矿卡
+ * 主板形态：板型（Mini-ITX / M-ATX / ATX / E-ATX），语义与显卡不同，
+ *          因此主板按 formFactor 推导，不套用显卡的长度阈值。
+ */
 export const VARIANTS = ['ITX', '单风扇', '单槽薄', '标准', '长卡', '矿卡'];
 
+/** 全部已知形态的展示顺序（显卡形态 + 板型） */
+const VARIANT_ORDER = [
+  // 显卡
+  'ITX', '单风扇', '单槽薄', '标准', '长卡', '矿卡',
+  // 主板板型
+  'Mini-ITX', 'M-ATX', 'ATX', 'E-ATX', '洋垃圾', '未知板型',
+];
+
 /**
- * 由长度 + 厚度 + 成色推导形态标签
+ * 由长度 + 厚度 + 成色推导形态标签（**显卡**口径）
  *
  * 阈值说明（基于实测常见非公版尺寸）：
  *   ≤180mm  → ITX/短卡（多数 ITX 卡 168~183mm）
@@ -69,9 +83,37 @@ export function inferVariants(rec) {
   return tags;
 }
 
-/** 记录的实际形态：优先用 variant 字段，否则自动推导 */
-export function variantsOf(rec) {
+/**
+ * 主板的形态标签：**按板型判定，不能套显卡的长度阈值**
+ *
+ * 主板的 length_mm 是"板长"（170~305mm 覆盖 Mini-ITX~ATX），
+ * 用显卡阈值去判会得到荒谬结果（244mm 的 M-ATX 会被判成"标准"、
+ * 170mm 的 ITX 才会被判成"ITX"，但语义完全不是一回事）。
+ * 主板真正决定兼容的是**板型**（对应不同机箱）。
+ *
+ * @param {object} rec 主板记录
+ * @returns {string[]} 形态标签（板型）
+ */
+export function inferMotherboardVariants(rec) {
+  const ff = (rec.formFactor || '').toString().trim();
+  if (ff) return [ff];
+
+  // 缺 formFactor 时不臆测板型 —— 标「未知板型」，
+  // 与 groupByChipset 的分组键保持一致，避免同一批数据出现两种标签。
+  return ['未知板型'];
+}
+
+/**
+ * 记录的实际形态：优先用 variant 字段，否则按品类自动推导
+ *
+ * 显卡与主板的「形态」语义不同：
+ *   显卡 = 卡的长度/厚度/散热形态（ITX、单风扇、长卡…）
+ *   主板 = 板型（Mini-ITX / M-ATX / ATX / E-ATX）
+ * 因此必须分品类推导，不能共用一套阈值。
+ */
+export function variantsOf(rec, category) {
   if (rec.variant) return [rec.variant];
+  if (category === 'motherboard') return inferMotherboardVariants(rec);
   return inferVariants(rec);
 }
 
@@ -146,8 +188,17 @@ export function groupByChipset(category, items) {
   const map = new Map();
   for (const rec of items) {
     const k = (rec[key] ?? '').toString().trim();
-    // 归并键为空（数据缺字段）时退回用 id，保证不丢数据
-    const groupKey = k || `__solo__:${rec.id}`;
+    let groupKey = k || `__solo__:${rec.id}`;
+
+    // 主板必须**按芯片组 + 板型**分组。
+    // 理由：Mini-ITX / M-ATX / ATX 是三种不同规格的主板，对应完全不同的机箱。
+    // 若只按芯片组归并，B650 会把 8 个变体（ITX~ATX）混成一组，
+    // 用户看到"170~305mm"却不知道哪个能装进自己的机箱 —— 反而更困惑。
+    if (category === 'motherboard' && k) {
+      const ff = (rec.formFactor || '').toString().trim() || '未知板型';
+      groupKey = `${k}·${ff}`;
+    }
+
     if (!map.has(groupKey)) map.set(groupKey, []);
     map.get(groupKey).push(rec);
   }
@@ -172,9 +223,9 @@ export function groupByChipset(category, items) {
     // 代表记录：优先全新，其次第一条
     const rep = sorted.find((r) => r.condition === 'new') || sorted[0];
 
-    // 形态标签并集，保持 VARIANTS 的声明顺序
-    const seen = new Set(sorted.flatMap(variantsOf));
-    const variants = VARIANTS.filter((v) => seen.has(v));
+    // 形态标签并集，保持声明顺序
+    const seen = new Set(sorted.flatMap((r) => variantsOf(r, category)));
+    const variants = VARIANT_ORDER.filter((v) => seen.has(v));
 
     groups.push({
       key: k,
@@ -194,6 +245,10 @@ export function groupByChipset(category, items) {
       // 供电接口：取组内最大值（最"挑"电源的那个变体）
       pcie8pin: maxOf(sorted, 'pcie8pin'),
       pcie12vhpwr: maxOf(sorted, 'pcie12vhpwr'),
+      // 主板专用：板型与插槽（同组必相同，取代表记录即可）
+      formFactor: rep.formFactor,
+      socket: rep.socket,
+      memoryType: rep.memoryType,
       category,
     });
   }
@@ -212,7 +267,7 @@ function singleGroup(category, rec) {
     count: 1,
     lengthRange: fieldRange([rec], 'length_mm'),
     thicknessRange: fieldRange([rec], 'thicknessSlots'),
-    variants: variantsOf(rec),
+    variants: variantsOf(rec, category),
     conditions: rec.condition ? [rec.condition] : [],
     vram: rec.vram,
     tdp: rec.tdp,
@@ -220,6 +275,9 @@ function singleGroup(category, rec) {
     productivityScore: rec.productivityScore,
     pcie8pin: rec.pcie8pin,
     pcie12vhpwr: rec.pcie12vhpwr,
+    formFactor: rec.formFactor,
+    socket: rec.socket,
+    memoryType: rec.memoryType,
     category,
   };
 }

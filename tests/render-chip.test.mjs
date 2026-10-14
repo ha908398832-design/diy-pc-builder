@@ -193,7 +193,88 @@ test('边界：XSS 转义（芯片名/品牌名可能含特殊字符）', () => 
 });
 
 // ══════════════════════════════════════════════════════════════════
-// 4. 供电接口展示
+// 4. 主板芯片组表格
+// ══════════════════════════════════════════════════════════════════
+
+const MB = [
+  { id: 'mb-1', category: 'motherboard', brand: '技嘉', chipset: 'B650', name: 'B650I AORUS ULTRA',
+    formFactor: 'Mini-ITX', socket: 'AM5', memoryType: 'DDR5', m2Slots: 1, sataPorts: 4,
+    length_mm: 170, condition: 'new' },
+  { id: 'mb-2', category: 'motherboard', brand: '华擎', chipset: 'B650', name: 'B650M PG Riptide',
+    formFactor: 'M-ATX', socket: 'AM5', memoryType: 'DDR5', m2Slots: 2, sataPorts: 4,
+    length_mm: 244, condition: 'new' },
+  { id: 'mb-3', category: 'motherboard', brand: '微星', chipset: 'B650', name: 'MAG B650 TOMAHAWK',
+    formFactor: 'ATX', socket: 'AM5', memoryType: 'DDR5', m2Slots: 3, sataPorts: 6,
+    length_mm: 305, condition: 'used' },
+];
+
+test('主板表：列头是芯片组·板型/插槽，不是显卡的长度厚度', () => {
+  const html = renderChipTable({
+    category: 'motherboard', groups: groupByChipset('motherboard', MB),
+    checkCandidate: noCheck, isSelected: noSel,
+  });
+  assert.ok(html.includes('芯片组 · 板型'), '应显示芯片组·板型列');
+  assert.ok(html.includes('插槽'), '应显示插槽列');
+  assert.ok(html.includes('M.2'), '应显示 M.2 列');
+  assert.ok(!html.includes('游戏分'), '主板表不应有游戏分列');
+  assert.ok(!html.includes('显存'), '主板表不应有显存列');
+  assert.ok(!html.includes('>厚度<'), '主板表不应有厚度列');
+});
+
+test('主板表：不同板型分行，芯片行标签含板型', () => {
+  const groups = groupByChipset('motherboard', MB);
+  assert.equal(groups.length, 3, '三种板型应分行');
+
+  const html = renderChipTable({
+    category: 'motherboard', groups,
+    checkCandidate: noCheck, isSelected: noSel,
+  });
+  // 板型体现在芯片行标签里（B650·Mini-ITX 等），不另设"形态"列
+  assert.ok(html.includes('B650·Mini-ITX'), '芯片行标签应含板型');
+  assert.ok(html.includes('B650·M-ATX'), '芯片行标签应含板型');
+  assert.ok(html.includes('B650·ATX'), '芯片行标签应含板型');
+  // 不应出现显卡式的长度区间
+  assert.ok(!/\d+~\d+ ?mm/.test(html), '主板不应显示显卡式的长度区间');
+  // 不应重复出现独立的形态标签列
+  assert.ok(!html.includes('chip-variants'), '主板不应有独立形态标签列');
+});
+
+test('主板表：芯片行显示插槽与内存代数', () => {
+  const html = renderChipTable({
+    category: 'motherboard', groups: groupByChipset('motherboard', MB),
+    checkCandidate: noCheck, isSelected: noSel,
+  });
+  assert.ok(html.includes('AM5'), '应显示插槽 AM5');
+  assert.ok(html.includes('DDR5'), '应显示内存代数 DDR5');
+});
+
+test('主板表：展开后变体带各自板型与插槽', () => {
+  // 同一芯片组 + 同一板型的多个品牌，才是真正的"多变体"场景
+  const sameFf = [
+    { id: 's1', category: 'motherboard', brand: '微星', chipset: 'B650', name: 'B650M MORTAR',
+      formFactor: 'M-ATX', socket: 'AM5', memoryType: 'DDR5', m2Slots: 2, sataPorts: 4,
+      length_mm: 244, condition: 'new' },
+    { id: 's2', category: 'motherboard', brand: '华硕', chipset: 'B650', name: 'PRIME B650M-A',
+      formFactor: 'M-ATX', socket: 'AM5', memoryType: 'DDR5', m2Slots: 2, sataPorts: 4,
+      length_mm: 244, condition: 'new' },
+  ];
+  const groups = groupByChipset('motherboard', sameFf);
+  assert.equal(groups.length, 1, '同芯片组同板型应合并为一组');
+  assert.equal(groups[0].count, 2, '应含 2 个变体');
+
+  const html = renderChipTable({
+    category: 'motherboard', groups,
+    checkCandidate: noCheck, isSelected: noSel,
+    expandedKey: 'B650·M-ATX',
+  });
+  assert.ok(html.includes('data-pick="s1"'), '变体 s1 应可选中');
+  assert.ok(html.includes('data-pick="s2"'), '变体 s2 应可选中');
+  assert.ok(html.includes('微星') && html.includes('华硕'), '应显示各品牌');
+  assert.ok(html.includes('variant-row'), '变体行应有变体样式类');
+});
+
+// ══════════════════════════════════════════════════════════════════
+// 5. 供电接口展示
 // ══════════════════════════════════════════════════════════════════
 
 test('供电接口：摘要格式正确', () => {

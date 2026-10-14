@@ -232,7 +232,8 @@ function render() {
 
   // 详情区按需展开：只有选中了型号或勾选了对比才显示，否则不占空间
   const showDetail = compareRecs.length >= 2 || !!detailRec;
-  centerEl.classList.toggle('detail-open', showDetail);
+  // 容错：极简 DOM / 测试 shim 可能没有 classList
+  try { centerEl.classList?.toggle('detail-open', showDetail); } catch { /* 忽略 */ }
 
   centerEl.innerHTML = `
     ${renderToolbar({

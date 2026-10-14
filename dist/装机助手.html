@@ -616,6 +616,13 @@ input[type="checkbox"] { accent-color: var(--accent); }
   border-color: var(--border);
 }
 
+/* 主板板型标签：语义与显卡形态不同（Mini-ITX/M-ATX/ATX 对应不同机箱） */
+.vtag-Mini-ITX, .vtag-ITX { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
+.vtag-M-ATX    { color: var(--info); border-color: var(--info-border); background: var(--info-bg); }
+.vtag-ATX      { color: var(--fg-2); border-color: var(--border-strong); }
+.vtag-E-ATX    { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+.vtag-洋垃圾   { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+
 /* 估算值标记：尺寸来自知识库而非实测时显示 ≈ */
 .approx {
   color: var(--warn);
@@ -4655,11 +4662,25 @@ function groupKeyOf(category) {
 // 形态判定
 // ══════════════════════════════════════════════════════════════════
 
-/** 形态枚举（写入数据的 variant 字段时也用这些值） */
+/**
+ * 形态标签的**声明顺序**（用于组内去重后排序，保证展示稳定）
+ *
+ * 显卡形态：ITX / 单风扇 / 单槽薄 / 标准 / 长卡 / 矿卡
+ * 主板形态：板型（Mini-ITX / M-ATX / ATX / E-ATX），语义与显卡不同，
+ *          因此主板按 formFactor 推导，不套用显卡的长度阈值。
+ */
 const VARIANTS = ['ITX', '单风扇', '单槽薄', '标准', '长卡', '矿卡'];
 
+/** 全部已知形态的展示顺序（显卡形态 + 板型） */
+const VARIANT_ORDER = [
+  // 显卡
+  'ITX', '单风扇', '单槽薄', '标准', '长卡', '矿卡',
+  // 主板板型
+  'Mini-ITX', 'M-ATX', 'ATX', 'E-ATX', '洋垃圾', '未知板型',
+];
+
 /**
- * 由长度 + 厚度 + 成色推导形态标签
+ * 由长度 + 厚度 + 成色推导形态标签（**显卡**口径）
  *
  * 阈值说明（基于实测常见非公版尺寸）：
  *   ≤180mm  → ITX/短卡（多数 ITX 卡 168~183mm）
@@ -4690,9 +4711,37 @@ function inferVariants(rec) {
   return tags;
 }
 
-/** 记录的实际形态：优先用 variant 字段，否则自动推导 */
-function variantsOf(rec) {
+/**
+ * 主板的形态标签：**按板型判定，不能套显卡的长度阈值**
+ *
+ * 主板的 length_mm 是"板长"（170~305mm 覆盖 Mini-ITX~ATX），
+ * 用显卡阈值去判会得到荒谬结果（244mm 的 M-ATX 会被判成"标准"、
+ * 170mm 的 ITX 才会被判成"ITX"，但语义完全不是一回事）。
+ * 主板真正决定兼容的是**板型**（对应不同机箱）。
+ *
+ * @param {object} rec 主板记录
+ * @returns {string[]} 形态标签（板型）
+ */
+function inferMotherboardVariants(rec) {
+  const ff = (rec.formFactor || '').toString().trim();
+  if (ff) return [ff];
+
+  // 缺 formFactor 时不臆测板型 —— 标「未知板型」，
+  // 与 groupByChipset 的分组键保持一致，避免同一批数据出现两种标签。
+  return ['未知板型'];
+}
+
+/**
+ * 记录的实际形态：优先用 variant 字段，否则按品类自动推导
+ *
+ * 显卡与主板的「形态」语义不同：
+ *   显卡 = 卡的长度/厚度/散热形态（ITX、单风扇、长卡…）
+ *   主板 = 板型（Mini-ITX / M-ATX / ATX / E-ATX）
+ * 因此必须分品类推导，不能共用一套阈值。
+ */
+function variantsOf(rec, category) {
   if (rec.variant) return [rec.variant];
+  if (category === 'motherboard') return inferMotherboardVariants(rec);
   return inferVariants(rec);
 }
 
@@ -4767,8 +4816,17 @@ function groupByChipset(category, items) {
   const map = new Map();
   for (const rec of items) {
     const k = (rec[key] ?? '').toString().trim();
-    // 归并键为空（数据缺字段）时退回用 id，保证不丢数据
-    const groupKey = k || `__solo__:${rec.id}`;
+    let groupKey = k || `__solo__:${rec.id}`;
+
+    // 主板必须**按芯片组 + 板型**分组。
+    // 理由：Mini-ITX / M-ATX / ATX 是三种不同规格的主板，对应完全不同的机箱。
+    // 若只按芯片组归并，B650 会把 8 个变体（ITX~ATX）混成一组，
+    // 用户看到"170~305mm"却不知道哪个能装进自己的机箱 —— 反而更困惑。
+    if (category === 'motherboard' && k) {
+      const ff = (rec.formFactor || '').toString().trim() || '未知板型';
+      groupKey = `${k}·${ff}`;
+    }
+
     if (!map.has(groupKey)) map.set(groupKey, []);
     map.get(groupKey).push(rec);
   }
@@ -4793,9 +4851,9 @@ function groupByChipset(category, items) {
     // 代表记录：优先全新，其次第一条
     const rep = sorted.find((r) => r.condition === 'new') || sorted[0];
 
-    // 形态标签并集，保持 VARIANTS 的声明顺序
-    const seen = new Set(sorted.flatMap(variantsOf));
-    const variants = VARIANTS.filter((v) => seen.has(v));
+    // 形态标签并集，保持声明顺序
+    const seen = new Set(sorted.flatMap((r) => variantsOf(r, category)));
+    const variants = VARIANT_ORDER.filter((v) => seen.has(v));
 
     groups.push({
       key: k,
@@ -4815,6 +4873,10 @@ function groupByChipset(category, items) {
       // 供电接口：取组内最大值（最"挑"电源的那个变体）
       pcie8pin: maxOf(sorted, 'pcie8pin'),
       pcie12vhpwr: maxOf(sorted, 'pcie12vhpwr'),
+      // 主板专用：板型与插槽（同组必相同，取代表记录即可）
+      formFactor: rep.formFactor,
+      socket: rep.socket,
+      memoryType: rep.memoryType,
       category,
     });
   }
@@ -4833,7 +4895,7 @@ function singleGroup(category, rec) {
     count: 1,
     lengthRange: fieldRange([rec], 'length_mm'),
     thicknessRange: fieldRange([rec], 'thicknessSlots'),
-    variants: variantsOf(rec),
+    variants: variantsOf(rec, category),
     conditions: rec.condition ? [rec.condition] : [],
     vram: rec.vram,
     tdp: rec.tdp,
@@ -4841,6 +4903,9 @@ function singleGroup(category, rec) {
     productivityScore: rec.productivityScore,
     pcie8pin: rec.pcie8pin,
     pcie12vhpwr: rec.pcie12vhpwr,
+    formFactor: rec.formFactor,
+    socket: rec.socket,
+    memoryType: rec.memoryType,
     category,
   };
 }
@@ -4882,7 +4947,7 @@ function groupSummary(group) {
 function categoryLabel(category) {
   return CATEGORY_LABELS[category] || category;
 }
-return { "GROUPED_CATEGORIES": GROUPED_CATEGORIES, "isGrouped": isGrouped, "groupKeyOf": groupKeyOf, "VARIANTS": VARIANTS, "inferVariants": inferVariants, "variantsOf": variantsOf, "fieldRange": fieldRange, "formatRange": formatRange, "groupByChipset": groupByChipset, "isSingleVariant": isSingleVariant, "groupSummary": groupSummary, "categoryLabel": categoryLabel };
+return { "GROUPED_CATEGORIES": GROUPED_CATEGORIES, "isGrouped": isGrouped, "groupKeyOf": groupKeyOf, "VARIANTS": VARIANTS, "inferVariants": inferVariants, "inferMotherboardVariants": inferMotherboardVariants, "variantsOf": variantsOf, "fieldRange": fieldRange, "formatRange": formatRange, "groupByChipset": groupByChipset, "isSingleVariant": isSingleVariant, "groupSummary": groupSummary, "categoryLabel": categoryLabel };
 };
 __defs["src/ui/render.js"] = function(__deps){
 var CATEGORY_LABELS = __deps["src/core/enums.js"].CATEGORY_LABELS;
@@ -4899,6 +4964,7 @@ var groupByChipset = __deps["src/core/grouping.js"].groupByChipset;
 var isGrouped = __deps["src/core/grouping.js"].isGrouped;
 var formatRange = __deps["src/core/grouping.js"].formatRange;
 var isSingleVariant = __deps["src/core/grouping.js"].isSingleVariant;
+var variantsOf = __deps["src/core/grouping.js"].variantsOf;
 /**
  * 视图渲染（纯函数层）
  *
@@ -5339,6 +5405,29 @@ function cellValue(rec, col) {
  * @param {function} o.isSelected     (rec) => boolean
  * @param {Array}  o.compareIds      勾选对比的记录 id
  */
+/** 芯片组表格的列定义：按品类给不同的芯片级列 */
+function chipTableColumns(category) {
+  if (category === 'motherboard') {
+    // 芯片行标签形如「B650·M-ATX」，板型已包含在内，故不重复"板型"列
+    return [
+      { key: 'chipset', label: '芯片组 · 板型', main: true },
+      { key: 'socket', label: '插槽' },
+      { key: 'memoryType', label: '内存' },
+      { key: 'm2Slots', label: 'M.2', num: true },
+      { key: 'sataPorts', label: 'SATA', num: true },
+    ];
+  }
+  // 显卡（默认）
+  return [
+    { key: 'chipset', label: '芯片型号', main: true },
+    { key: 'vram', label: '显存', num: true },
+    { key: 'length_mm', label: '长度', num: true },
+    { key: 'thicknessSlots', label: '厚度', num: true },
+    { key: 'tdp', label: '功耗', num: true },
+    { key: 'gameScore', label: '游戏分', num: true },
+  ];
+}
+
 /**
  * 芯片组表格（PRD 3.1.2b）
  *
@@ -5358,22 +5447,22 @@ function cellValue(rec, col) {
 function renderChipTable({
   category, groups = [], checkCandidate, isSelected, expandedKey = null,
 }) {
+  const isMb = category === 'motherboard';
+  // 主板：芯片行标签已含板型（B650·M-ATX），不再单列"形态"，
+  // 也不重复显示"板型"列；显卡则相反（芯片行不含形态信息）
+  const cols = chipTableColumns(category);
+  const head = cols
+    .map((c) => `<th${c.num ? ' class="num"' : ''}>${esc(c.label)}</th>`)
+    .join('');
+  const showVariantCol = !isMb;   // 显卡才需要独立的形态标签列
+
   if (groups.length === 0) {
     return `
       <table class="hw-table chip-table">
-        <thead><tr>
-          <th class="pick"></th><th>芯片型号</th><th>形态</th>
-          <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
-          <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>
-        </tr></thead>
+        <thead><tr><th class="pick"></th>${head}<th class="ops">操作</th></tr></thead>
       </table>
       <div class="empty-hint">没有匹配的型号。试试清空搜索或关掉筛选。</div>`;
   }
-
-  const head = `
-    <th class="pick"></th><th>芯片型号</th><th>形态</th>
-    <th class="num">显存</th><th class="num">长度</th><th class="num">厚度</th>
-    <th class="num">功耗</th><th class="num">游戏分</th><th class="ops">操作</th>`;
 
   const rows = groups.map((g) => {
     const expanded = expandedKey === g.key;
@@ -5404,17 +5493,25 @@ function renderChipTable({
         ${selectedVariant ? `<span class="badge">已选：${esc(selectedVariant.brand || selectedVariant.name.slice(0, 12))}</span>` : ''}
       </td>`;
 
+    // 芯片级参数列
+    const paramCells = isMb
+      ? `<td>${esc(g.socket || '—')}</td>
+         <td>${esc(g.memoryType || '—')}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'm2Slots' }))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'sataPorts' }))}</td>`
+      : `<td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
+         <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
+         <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
+         <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>`;
+
     const row = `
       <tr class="chip-row${worst === 'ok' ? '' : ' is-conflict'}" data-level="${esc(worst)}"
           ${selectedVariant ? ' data-has-selected="1"' : ''}>
         <td class="pick"><input type="checkbox" disabled></td>
         ${chipCell}
-        <td class="chip-variants">${variantTags}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'vram' }))}</td>
-        <td class="num">${approxMark}${esc(formatRange(g.lengthRange, 'mm'))}</td>
-        <td class="num">${esc(formatRange(g.thicknessRange, '槽'))}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'tdp' }))}</td>
-        <td class="num">${esc(cellValue(g.rep, { key: 'gameScore' }))}</td>
+        ${showVariantCol ? `<td class="chip-variants">${variantTags}</td>` : ''}
+        ${paramCells}
         <td class="ops">
           ${g.count > 1
             ? `<button type="button" class="btn-pick" data-chip-toggle="${esc(g.key)}">展开</button>`
@@ -5431,6 +5528,21 @@ function renderChipTable({
       const conflict = ck.level === 'error' || ck.level === 'warn';
       const rApprox = Array.isArray(r.estimated) && r.estimated.includes('length_mm') ? '≈' : '';
       const cond = conditionLabel(r.condition);
+      // 变体行：主板显示插槽/内存，显卡显示长度/厚度
+      const specCells = isMb
+        ? `<td>${esc(r.socket || '—')}</td>
+           <td>${esc(r.memoryType || '—')}</td>
+           <td class="num">${esc(cellValue(r, { key: 'm2Slots' }))}</td>
+           <td class="num">${esc(cellValue(r, { key: 'sataPorts' }))}</td>`
+        : `<td class="variant-specs">
+             <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
+             <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
+           </td>
+           <td class="num">${esc(r.vram ?? '—')}</td>
+           <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
+           <td class="num"></td>
+           <td class="num"></td>`;
+
       return `
         <tr class="variant-row${sel ? ' is-selected' : ''}${conflict ? ' is-conflict' : ''}"
             data-level="${esc(ck.level)}" data-variant-of="${esc(g.key)}">
@@ -5442,15 +5554,8 @@ function renderChipTable({
             ${r.custom ? '<span class="badge badge-custom">自定义</span>' : ''}
             ${conflict ? `<span class="row-flag" title="${esc(ck.findings[0]?.reason || '存在兼容问题')}">${LEVEL_ICONS[ck.level]}</span>` : ''}
           </td>
-          <td class="variant-specs">
-            <span title="长度">${rApprox}${esc(r.length_mm ?? '—')}mm</span>
-            <span title="厚度">${esc(r.thicknessSlots ?? '—')}槽</span>
-          </td>
-          <td class="num">${esc(r.vram ?? '—')}</td>
-          <td class="num">${esc(cellValue(r, { key: 'powerConnectors' }))}</td>
-          <td class="num"></td>
-          <td class="num"></td>
-          <td class="num"></td>
+          ${showVariantCol ? `<td class="chip-variants">${variantsOf(r, category).map((v) => `<span class="vtag vtag-${esc(v)}">${esc(v)}</span>`).join('')}</td>` : ''}
+          ${specCells}
           <td class="ops">
             <button type="button" class="btn-pick" data-pick="${esc(r.id)}">${sel ? '已选' : '选它'}</button>
           </td>
@@ -5462,7 +5567,7 @@ function renderChipTable({
 
   return `
     <table class="hw-table chip-table">
-      <thead><tr>${head}</tr></thead>
+      <thead><tr><th class="pick"></th>${head}<th class="ops">操作</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
@@ -6643,7 +6748,8 @@ function render() {
 
   // 详情区按需展开：只有选中了型号或勾选了对比才显示，否则不占空间
   const showDetail = compareRecs.length >= 2 || !!detailRec;
-  centerEl.classList.toggle('detail-open', showDetail);
+  // 容错：极简 DOM / 测试 shim 可能没有 classList
+  try { centerEl.classList?.toggle('detail-open', showDetail); } catch { /* 忽略 */ }
 
   centerEl.innerHTML = `
     ${renderToolbar({

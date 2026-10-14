@@ -609,6 +609,13 @@ input[type="checkbox"] { accent-color: var(--accent); }
   border-color: var(--border);
 }
 
+/* 主板板型标签：语义与显卡形态不同（Mini-ITX/M-ATX/ATX 对应不同机箱） */
+.vtag-Mini-ITX, .vtag-ITX { color: var(--ok); border-color: var(--ok-border); background: var(--ok-bg); }
+.vtag-M-ATX    { color: var(--info); border-color: var(--info-border); background: var(--info-bg); }
+.vtag-ATX      { color: var(--fg-2); border-color: var(--border-strong); }
+.vtag-E-ATX    { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+.vtag-洋垃圾   { color: var(--warn); border-color: var(--warn-border); background: var(--warn-bg); }
+
 /* 估算值标记：尺寸来自知识库而非实测时显示 ≈ */
 .approx {
   color: var(--warn);
